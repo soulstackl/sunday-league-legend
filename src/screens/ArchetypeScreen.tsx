@@ -57,7 +57,7 @@ export function ArchetypeScreen({ onNext }: ArchetypeScreenProps) {
 
       <button
         onClick={() => onNext(selected)}
-        style={{ width: '100%', padding: '16px', background: 'var(--accent)', color: '#0C0C10', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', marginTop: 'auto' }}
+        style={{ width: '100%', padding: '16px', background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', marginTop: 'auto' }}
       >
         NEXT: CHOOSE JOB
       </button>

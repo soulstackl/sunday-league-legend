@@ -38,7 +38,7 @@ export function HallOfFameScreen({ hallOfFame, onBack }: HallOfFameScreenProps) 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-faint)' }}>
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{career.goals} goals · {career.points} pts</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  {career.cupWon && <Trophy size={11} style={{ color: 'var(--accent)' }} />}
+                  {career.cupWon && <Trophy size={11} style={{ color: 'var(--kit-amber)' }} />}
                   {new Date(career.date).toLocaleDateString('en-GB')}
                 </span>
               </div>

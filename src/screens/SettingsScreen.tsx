@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
+import { ThemeToggle } from '../components/shared/ThemeToggle'
 import type { SaveState, GameSettings } from '../types/game'
 
 interface SettingsScreenProps {
@@ -31,8 +32,8 @@ export function SettingsScreen({ store, onSaveSettings, onBack, onDeleteSave }: 
         style={{
           flex: 1,
           padding: '9px 6px',
-          background: isSel ? 'var(--accent)' : 'var(--surface)',
-          color: isSel ? '#0C0C10' : 'var(--text-muted)',
+          background: isSel ? 'var(--btn-bg)' : 'var(--surface)',
+          color: isSel ? 'var(--btn-text)' : 'var(--text-muted)',
           border: isSel ? 'none' : '1px solid var(--border)',
           borderRadius: '8px',
           fontWeight: 700,
@@ -87,7 +88,10 @@ export function SettingsScreen({ store, onSaveSettings, onBack, onDeleteSave }: 
     <ScreenContainer style={{ overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>Settings</h2>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '6px', fontFamily: 'var(--font-ui)' }}>Done</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <ThemeToggle />
+          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '6px', fontFamily: 'var(--font-ui)' }}>Done</button>
+        </div>
       </div>
 
       {/* Toggles */}
@@ -134,7 +138,7 @@ export function SettingsScreen({ store, onSaveSettings, onBack, onDeleteSave }: 
       <button
         aria-label="Save settings"
         onClick={handleSave}
-        style={{ width: '100%', padding: '14px', background: 'var(--accent)', color: '#0C0C10', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', marginBottom: '12px' }}
+        style={{ width: '100%', padding: '14px', background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', marginBottom: '12px' }}
       >
         SAVE SETTINGS
       </button>

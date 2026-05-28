@@ -81,8 +81,8 @@ export function TableScreen({ store, onContinue, onBack, canAdvance }: TableScre
         onClick={onContinue}
         style={{
           width: '100%', padding: '16px',
-          background: canAdvance ? 'var(--accent)' : 'var(--surface-raised)',
-          color: canAdvance ? '#0C0C10' : 'var(--text-faint)',
+          background: canAdvance ? 'var(--btn-bg)' : 'var(--surface-raised)',
+          color: canAdvance ? 'var(--btn-text)' : 'var(--text-faint)',
           border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
           cursor: canAdvance ? 'pointer' : 'not-allowed',
           letterSpacing: '0.04em', marginTop: 'auto',

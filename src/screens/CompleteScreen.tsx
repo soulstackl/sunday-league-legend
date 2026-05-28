@@ -55,7 +55,7 @@ export function CompleteScreen({ store, resolveEnding, onHallOfFame, onNextSeaso
           <div><span style={{ color: 'var(--text)', fontWeight: 700 }}>{goals}</span> goals</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {store.season.cupWon ? (
-              <><Trophy size={12} style={{ color: 'var(--accent)' }} /><span style={{ color: 'var(--accent)', fontWeight: 700 }}>Tankard won</span></>
+              <><Trophy size={12} style={{ color: 'var(--kit-amber)' }} /><span style={{ color: 'var(--accent)', fontWeight: 700 }}>Tankard won</span></>
             ) : store.season.cupExited ? (
               <span>Cup: eliminated</span>
             ) : (

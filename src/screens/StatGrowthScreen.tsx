@@ -73,8 +73,8 @@ export function StatGrowthScreen({ store, options, onConfirm }: Props) {
         onClick={() => selected && onConfirm(selected)}
         style={{
           width: '100%', padding: '16px',
-          background: selected ? 'var(--accent)' : 'var(--surface-raised)',
-          color: selected ? '#0C0C10' : 'var(--text-faint)',
+          background: selected ? 'var(--btn-bg)' : 'var(--surface-raised)',
+          color: selected ? 'var(--btn-text)' : 'var(--text-faint)',
           border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
           cursor: selected ? 'pointer' : 'not-allowed',
           letterSpacing: '0.04em', marginTop: '24px',

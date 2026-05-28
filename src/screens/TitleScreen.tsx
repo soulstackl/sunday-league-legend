@@ -1,5 +1,6 @@
 import { Trophy, Settings } from 'lucide-react'
 import { Badge } from '../components/shared/Badge'
+import { ThemeToggle } from '../components/shared/ThemeToggle'
 
 interface TitleScreenProps {
   onNew: () => void
@@ -11,7 +12,10 @@ interface TitleScreenProps {
 
 export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: TitleScreenProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px 24px', textAlign: 'center', gap: '0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px 24px', textAlign: 'center', gap: '0', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
+        <ThemeToggle />
+      </div>
       <div style={{ animation: 'bounce 2.5s infinite', marginBottom: '24px' }}>
         <Badge size={100} />
       </div>
@@ -29,7 +33,7 @@ export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: 
         <button
           aria-label="Start a new career"
           onClick={onNew}
-          style={{ width: '100%', padding: '16px', background: 'var(--accent)', color: '#0C0C10', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em' }}
+          style={{ width: '100%', padding: '16px', background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em' }}
         >
           NEW CAREER
         </button>

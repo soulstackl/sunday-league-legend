@@ -134,8 +134,8 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
                 onClick={() => setStatChoice(k)}
                 style={{
                   padding: '8px 14px',
-                  background: statChoice === k ? 'var(--accent)' : 'var(--surface-raised)',
-                  color: statChoice === k ? '#0C0C10' : 'var(--text)',
+                  background: statChoice === k ? 'var(--btn-bg)' : 'var(--surface-raised)',
+                  color: statChoice === k ? 'var(--btn-text)' : 'var(--text)',
                   border: statChoice === k ? 'none' : '1px solid var(--border)',
                   borderRadius: '20px',
                   fontWeight: 700,
@@ -165,8 +165,8 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
                     padding: '7px 12px',
-                    background: isSel ? 'var(--accent)' : 'var(--surface-raised)',
-                    color: isSel ? '#0C0C10' : 'var(--text)',
+                    background: isSel ? 'var(--btn-bg)' : 'var(--surface-raised)',
+                    color: isSel ? 'var(--btn-text)' : 'var(--text)',
                     border: isSel ? 'none' : '1px solid var(--border)',
                     borderRadius: '20px',
                     fontWeight: 700,
@@ -189,8 +189,8 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
         onClick={confirm}
         style={{
           width: '100%', padding: '16px',
-          background: canConfirm ? 'var(--accent)' : 'var(--surface-raised)',
-          color: canConfirm ? '#0C0C10' : 'var(--text-faint)',
+          background: canConfirm ? 'var(--btn-bg)' : 'var(--surface-raised)',
+          color: canConfirm ? 'var(--btn-text)' : 'var(--text-faint)',
           border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
           cursor: canConfirm ? 'pointer' : 'not-allowed',
           letterSpacing: '0.04em', marginTop: 'auto',

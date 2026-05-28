@@ -45,8 +45,8 @@ export function NameScreen({ onNext }: NameScreenProps) {
         onClick={() => onNext(name)}
         style={{
           width: '100%', padding: '16px',
-          background: name.trim() ? 'var(--accent)' : 'var(--surface-raised)',
-          color: name.trim() ? '#0C0C10' : 'var(--text-faint)',
+          background: name.trim() ? 'var(--btn-bg)' : 'var(--surface-raised)',
+          color: name.trim() ? 'var(--btn-text)' : 'var(--text-faint)',
           border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
           cursor: name.trim() ? 'pointer' : 'not-allowed',
           letterSpacing: '0.04em', marginTop: '20px',

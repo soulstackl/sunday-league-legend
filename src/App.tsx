@@ -416,7 +416,7 @@ export function App() {
   }
 
   return (
-    <div style={{ maxWidth: '430px', margin: '0 auto', minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--charcoal)', position: 'relative' }}>
+    <div style={{ maxWidth: '430px', margin: '0 auto', minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'transparent', position: 'relative' }}>
       {currentScreen === 'title' && (
         <TitleScreen
           hasSave={hasSave}

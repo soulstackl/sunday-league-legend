@@ -1,4 +1,5 @@
 import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Settings, CheckCircle2 } from 'lucide-react'
+import { ThemeToggle } from '../components/shared/ThemeToggle'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { StatusBar } from '../components/shared/StatusBar'
@@ -171,8 +172,8 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
         onClick={onNextMatch}
         style={{
           width: '100%', padding: '18px',
-          background: fixture ? 'var(--accent)' : 'var(--surface-raised)',
-          color: fixture ? '#0C0C10' : 'var(--text-faint)',
+          background: fixture ? 'var(--btn-bg)' : 'var(--surface-raised)',
+          color: fixture ? 'var(--btn-text)' : 'var(--text-faint)',
           border: 'none',
           borderRadius: '14px',
           fontSize: '16px',
@@ -188,7 +189,7 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
       </button>
 
       {/* Utility row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'center' }}>
         <button
           aria-label="Open settings"
           onClick={onSettings}
@@ -197,6 +198,7 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
           <Settings size={13} />
           Settings
         </button>
+        <ThemeToggle />
         <button
           aria-label="View Hall of Fame"
           onClick={onHall}

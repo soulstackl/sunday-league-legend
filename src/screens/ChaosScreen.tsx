@@ -129,8 +129,8 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
         onClick={nextCard}
         style={{
           width: '100%', padding: '16px',
-          background: proceedDisabled ? 'var(--surface-raised)' : 'var(--accent)',
-          color: proceedDisabled ? 'var(--text-faint)' : '#0C0C10',
+          background: proceedDisabled ? 'var(--surface-raised)' : 'var(--btn-bg)',
+          color: proceedDisabled ? 'var(--text-faint)' : 'var(--btn-text)',
           border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
           cursor: proceedDisabled ? 'not-allowed' : 'pointer',
           letterSpacing: '0.04em',

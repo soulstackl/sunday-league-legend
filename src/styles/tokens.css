@@ -1,52 +1,110 @@
+/* ─── Dark mode (default) ──────────────────────────────────────────── */
 :root {
-  /* ─── Pitch / arena (used only by canvas drawing — do not repurpose) ─── */
+  /* Pitch / arena — canvas use only */
   --pitch-green: #2d5a27;
   --pitch-line: #4a7c42;
   --mud-brown: #8B6914;
 
-  /* ─── Base surfaces ─── */
-  --bg: #0C0C10;
-  --charcoal: #0C0C10;        /* kept for screen-background compat */
-  --card-bg: #141419;          /* primary card / panel surface */
-  --surface: #1C1C24;          /* raised chips, inset panels, selected cells */
-  --surface-raised: #22222E;   /* elevated — selected cards, modals */
+  /* App gradient background */
+  --app-bg: linear-gradient(135deg, #1e1e26 0%, #2d1a36 55%, #1e1e26 100%);
 
-  /* ─── Borders ─── */
-  --border-subtle: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  /* Surfaces */
+  --charcoal: #1e1e26;           /* solid dark — used by arena HUD */
+  --bg: transparent;             /* screen containers transparent → gradient shows */
+  --card-bg: rgba(255, 255, 255, 0.07);
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-raised: rgba(255, 255, 255, 0.10);
+  --card-blur: blur(10px);
 
-  /* ─── Text ─── */
-  --cream: #EEECF6;            /* primary text (cool near-white) */
-  --off-white: #EEECF6;
-  --text: #EEECF6;
-  --warm-grey: #8886A0;        /* secondary / muted text */
-  --text-muted: #8886A0;
-  --text-faint: #4A4A60;       /* tertiary — placeholders, disabled */
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.10);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(197, 165, 255, 0.35);
 
-  /* ─── Accent — refined warm gold ─── */
-  --kit-amber: #F0A830;
-  --kit-amber-dark: #C07A10;
-  --accent: #F0A830;
-  --accent-dark: #C07A10;
-  --accent-bg: rgba(240, 168, 48, 0.10);
-  --accent-bg-strong: rgba(240, 168, 48, 0.20);
+  /* Text */
+  --text: #ffffff;
+  --cream: #ffffff;           /* compat alias */
+  --off-white: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.60);
+  --warm-grey: rgba(255, 255, 255, 0.60);
+  --text-faint: rgba(255, 255, 255, 0.35);
 
-  /* ─── Status ─── */
-  --success: #22C55E;
-  --success-bg: rgba(34, 197, 94, 0.10);
-  --danger: #F43F5E;
-  --danger-bg: rgba(244, 63, 94, 0.10);
-  --purple: #A78BFA;
-  --purple-bg: rgba(167, 139, 250, 0.10);
+  /* Brand accent — light purple for labels/borders/highlights */
+  --accent: #c5a5ff;
+  --accent-dark: #9b6dff;
+  --accent-brand: #562666;
+  --accent-bg: rgba(86, 38, 102, 0.30);
+  --accent-bg-strong: rgba(197, 165, 255, 0.13);
 
-  /* ─── Typography ─── */
-  --font-display: 'Space Grotesk', 'Outfit', sans-serif;
-  --font-primary: 'Space Grotesk', 'Outfit', sans-serif; /* kept for compat */
-  --font-ui: 'Outfit', -apple-system, sans-serif;
+  /* Buttons — separate from accent so CTA pops in both themes */
+  --btn-bg: #7c3aed;
+  --btn-text: #ffffff;
+
+  /* Football / gold accent */
+  --kit-amber: #f4d03f;
+  --kit-amber-dark: #d09f1f;
+
+  /* Status */
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.12);
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.12);
+  --purple: #a78bfa;
+  --purple-bg: rgba(167, 139, 250, 0.12);
+
+  /* Typography */
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'Courier Prime', 'Courier New', monospace;
 }
 
+/* ─── Light mode ───────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --app-bg: linear-gradient(135deg, #f0eeff 0%, #e4d8ff 55%, #f0eeff 100%);
+
+  --charcoal: #1e1e26;           /* keep same — arena compat */
+  --bg: #f5f3ff;
+  --card-bg: #ffffff;
+  --surface: #ede8ff;
+  --surface-raised: #e2daff;
+  --card-blur: blur(0px);
+
+  --border: rgba(86, 38, 102, 0.13);
+  --border-subtle: rgba(86, 38, 102, 0.06);
+  --border-strong: rgba(86, 38, 102, 0.30);
+
+  --text: #18161e;
+  --cream: #18161e;
+  --off-white: #18161e;
+  --text-muted: #6b5f84;
+  --warm-grey: #6b5f84;
+  --text-faint: #9b90b8;
+
+  /* In light mode, deep purple works as text accent on white/lavender bg */
+  --accent: #562666;
+  --accent-dark: #3d1b4b;
+  --accent-brand: #562666;
+  --accent-bg: rgba(86, 38, 102, 0.09);
+  --accent-bg-strong: rgba(86, 38, 102, 0.15);
+
+  /* Buttons same solid purple — works on light backgrounds too */
+  --btn-bg: #7c3aed;
+  --btn-text: #ffffff;
+
+  /* Gold — richer/darker for light backgrounds */
+  --kit-amber: #b96a0b;
+  --kit-amber-dark: #8f4c06;
+
+  --success: #16a34a;
+  --success-bg: rgba(22, 163, 74, 0.10);
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.10);
+  --purple: #7c3aed;
+  --purple-bg: rgba(124, 58, 237, 0.10);
+}
+
+/* ─── Universal resets ─────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -57,28 +115,20 @@
 }
 
 body {
-  background-color: var(--bg);
+  background: var(--app-bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-ui);
   overflow-x: hidden;
   min-height: 100vh;
 }
 
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--surface-raised);
-  border-radius: 2px;
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(197, 165, 255, 0.25); border-radius: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

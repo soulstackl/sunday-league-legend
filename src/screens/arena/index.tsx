@@ -93,8 +93,10 @@ function previewArc(bx: number, by: number, bz: number, vx: number, vy: number, 
     const speed = Math.sqrt(pvx * pvx + pvy * pvy)
     if (speed > 0.5 && curl !== 0) {
       const cf = curl * 0.04 * (speed / 15)
-      pvx += -pvy / speed * cf
-      pvy += pvx / speed * cf
+      const dpvx = -pvy / speed * cf
+      const dpvy = pvx / speed * cf
+      pvx += dpvx
+      pvy += dpvy
     }
     x += pvx; y += pvy; z += pvz
     pvx *= 0.99; pvy *= 0.99
@@ -226,7 +228,6 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
   const fieldNPCs = useRef<any[]>([])
   const particles = useRef<any[]>([])
   const pendingTimeouts = useRef<number[]>([])
-  const lastDragVector = useRef<{ angle: number; power: number; accuracy: number } | null>(null)
 
   const scheduleMomentTimeout = useCallback((fn: () => void, ms: number): number => {
     const id = window.setTimeout(() => {
@@ -271,12 +272,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     particles.current = []
     postParticles.current = []
     ballTrail.current = []
-    weatherParticles.current = []
     isDragging.current = false
     dragStart.current = null
     dragCurrent.current = null
     dragPath.current = []
-    lastDragVector.current = null
     deadZoneCrossed.current = false
     shotVariantRef.current = 'standard'
     goalFlashRef.current = 0
@@ -355,7 +354,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       tackleTimingActiveRef.current = true
       tackleTimingRef.current = 0
     } else if (activeMomentType === 'header') {
-      ball.current.x = 200; ball.current.y = 100; ball.current.z = 120
+      ball.current.x = 200; ball.current.y = 100; ball.current.z = 130
       ball.current.active = true; ball.current.vz = -1.2; ball.current.vy = 0.8
       fieldNPCs.current = []
     } else if (activeMomentType === 'penalty') {
@@ -522,8 +521,6 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     const sensitivity = store.settings.inputSensitivity === 'high' ? 1.08 : store.settings.inputSensitivity === 'low' ? 0.94 : 1
     const effectiveAccuracy = Math.max(0, Math.min(1.15, (accuracy + statMod + momentumBoost + vibesMod - energyPenalty - chaosMods.accuracyPenalty + scoutBonus + setPieceBonus) * sensitivity))
     const effectivePower = Math.max(0.2, Math.min(1.15, (power + statMod * 0.4 - chaosMods.powerPenalty + setPieceBonus * 0.5) * sensitivity))
-    lastDragVector.current = { angle, power: effectivePower, accuracy: effectiveAccuracy }
-
     if (activeMomentType === 'tackle') {
       setEnergy(e => Math.max(0, e - (10 - Math.round(statBoost(playerStats.graft) * 10))))
       const attacker = fieldNPCs.current.find((n: any) => n.type === 'attacker')
@@ -566,7 +563,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     ball.current.active = true
     ball.current.struck = { type: activeMomentType, basePower: effectivePower, accuracy: effectiveAccuracy }
 
-    const curlStatMod = 0.3 + statBoost(relevantStat) * 1.4
+    const curlStatMod = Math.max(0, 0.3 + statBoost(relevantStat) * 1.4)
     const finalCurl = curl * curlStatMod
 
     scheduleMomentTimeout(() => {
@@ -720,8 +717,14 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
     for (let i = postParticles.current.length - 1; i >= 0; i--) {
       const p = postParticles.current[i]
-      p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life -= 0.06
+      p.x += p.vx * ts; p.y += p.vy * ts; p.vy += 0.12 * ts; p.life -= 0.06 * ts
       if (p.life <= 0) postParticles.current.splice(i, 1)
+    }
+
+    for (let i = particles.current.length - 1; i >= 0; i--) {
+      const p = particles.current[i]
+      p.x += p.vx * ts; p.y += p.vy * ts; p.vy += 0.15 * ts; p.life -= 0.02 * ts
+      if (p.life <= 0) particles.current.splice(i, 1)
     }
 
     if (b.active) {
@@ -733,8 +736,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       if (b.curl !== 0 && (Math.abs(b.vx) + Math.abs(b.vy)) > 0.5) {
         const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy)
         const curlForce = b.curl * 0.04 * (speed / 15)
-        b.vx += -b.vy / speed * curlForce
-        b.vy += b.vx / speed * curlForce
+        const dvx = -b.vy / speed * curlForce
+        const dvy = b.vx / speed * curlForce
+        b.vx += dvx
+        b.vy += dvy
       }
 
       b.x += b.vx * ts
@@ -836,7 +841,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         if (!reducedMotion) { screenShakeRef.current = 6; hitStopRef.current = 3 }
       }
 
-      if (isShotType && b.y < 45 && b.x > 132 && b.x < 268 && b.z < 48) {
+      if (isShotType && !b.hitPost && !b.hitBar && b.y < 45 && b.x > 132 && b.x < 268 && b.z < 48) {
         b.inGoal = true
         const inTopThird = b.z > 25
         const inSideThird = b.x < 165 || b.x > 235
@@ -880,7 +885,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       }
 
       if (['shot', 'penalty', 'header', 'freekick'].includes(activeMomentType) && b.y < 80) {
-        const reach = k.state === 'saved' ? k.reach * 1.45 : (k.state === 'diving' ? k.reach * 1.30 : k.reach)
+        const reach = k.state === 'diving' ? k.reach * 1.30 : k.reach
         const dx = b.x - k.x
         const dz = b.z - (k.z || 0)
         const elliptical = (dx / reach) ** 2 + (dz / (reach * 0.6)) ** 2
@@ -1018,17 +1023,15 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       }
     }
 
-    for (let i = particles.current.length - 1; i >= 0; i--) {
+    for (let i = 0; i < particles.current.length; i++) {
       const p = particles.current[i]
       c.fillStyle = p.colour || p.color
       c.globalAlpha = Math.max(0, p.life)
       c.fillRect(p.x, p.y, 4, 4)
-      p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 0.02
-      if (p.life <= 0) particles.current.splice(i, 1)
     }
     c.globalAlpha = 1.0
 
-    for (let i = postParticles.current.length - 1; i >= 0; i--) {
+    for (let i = 0; i < postParticles.current.length; i++) {
       const p = postParticles.current[i]
       c.fillStyle = p.colour; c.globalAlpha = Math.max(0, p.life)
       c.beginPath(); c.arc(p.x, p.y, 3, 0, Math.PI * 2); c.fill()

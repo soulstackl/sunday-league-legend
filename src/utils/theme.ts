@@ -1,0 +1,18 @@
+export type Theme = 'dark' | 'light'
+
+const KEY = 'sll_theme'
+
+export function getTheme(): Theme {
+  return localStorage.getItem(KEY) === 'light' ? 'light' : 'dark'
+}
+
+export function applyTheme(theme: Theme): void {
+  document.documentElement.setAttribute('data-theme', theme)
+  localStorage.setItem(KEY, theme)
+}
+
+export function toggleTheme(): Theme {
+  const next: Theme = getTheme() === 'dark' ? 'light' : 'dark'
+  applyTheme(next)
+  return next
+}

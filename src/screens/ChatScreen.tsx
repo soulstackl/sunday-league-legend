@@ -59,9 +59,9 @@ export function ChatScreen({ store, onSendMessage, onBack, onChoice }: ChatScree
         <button
           onClick={handleSend}
           aria-label="Send message"
-          style={{ width: '40px', height: '40px', background: 'var(--accent)', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          style={{ width: '40px', height: '40px', background: 'var(--btn-bg)', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
-          <SendHorizontal size={16} color="#0C0C10" />
+          <SendHorizontal size={16} color="white" />
         </button>
       </div>
     </div>
