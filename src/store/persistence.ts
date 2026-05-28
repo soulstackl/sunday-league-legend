@@ -21,7 +21,13 @@ function migrate(raw: unknown): SaveState | null {
   const base = deepClone(initialSaveState)
   base.version = 3
 
-  if (data.player) base.player = { ...base.player, ...data.player, stats: { ...base.player.stats, ...(data.player.stats ?? {}) }, states: { ...base.player.states, ...(data.player.states ?? {}) } }
+  if (data.player) base.player = {
+    ...base.player,
+    ...data.player,
+    stats: { ...base.player.stats, ...(data.player.stats ?? {}) },
+    states: { ...base.player.states, ...(data.player.states ?? {}) },
+    traits: Array.isArray(data.player.traits) ? data.player.traits : base.player.traits,
+  }
   if (typeof data.seed === 'number') base.seed = data.seed
   if (typeof data.club === 'string') base.club = data.club
   if (data.season) {

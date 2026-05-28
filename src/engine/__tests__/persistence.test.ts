@@ -1,0 +1,137 @@
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { saveGame, loadGame, deepClone } from '../../store/persistence'
+import { initialSaveState, SAVE_KEY } from '../../store/initial-state'
+import type { SaveState } from '../../types/game'
+
+// Minimal in-memory localStorage shim for tests
+const store: Record<string, string> = {}
+const localStorageMock = {
+  getItem: (key: string) => store[key] ?? null,
+  setItem: (key: string, value: string) => { store[key] = value },
+  removeItem: (key: string) => { delete store[key] },
+}
+
+beforeEach(() => {
+  Object.assign(globalThis, { localStorage: localStorageMock })
+  Object.keys(store).forEach(k => delete store[k])
+})
+
+afterEach(() => {
+  Object.keys(store).forEach(k => delete store[k])
+})
+
+describe('deepClone', () => {
+  it('produces a value equal to the original', () => {
+    const clone = deepClone(initialSaveState)
+    expect(clone).toEqual(initialSaveState)
+  })
+
+  it('produces a distinct object reference', () => {
+    const clone = deepClone(initialSaveState)
+    expect(clone).not.toBe(initialSaveState)
+    expect(clone.player.stats).not.toBe(initialSaveState.player.stats)
+  })
+})
+
+describe('saveGame / loadGame round-trip', () => {
+  it('round-trips the full save state', () => {
+    const state: SaveState = deepClone(initialSaveState)
+    state.player.name = 'Bazza'
+    state.player.archetype = 'unit'
+    state.season.week = 5
+    state.season.tier = 2
+    saveGame(state)
+    const loaded = loadGame()
+    expect(loaded?.player.name).toBe('Bazza')
+    expect(loaded?.player.archetype).toBe('unit')
+    expect(loaded?.season.week).toBe(5)
+    expect(loaded?.season.tier).toBe(2)
+  })
+
+  it('returns null when nothing is saved', () => {
+    expect(loadGame()).toBeNull()
+  })
+
+  it('preserves hall of fame entries', () => {
+    const state: SaveState = deepClone(initialSaveState)
+    state.hallOfFame = [{
+      name: 'Smudger',
+      archetype: 'winger',
+      title: 'Pub Hero',
+      date: 1000000,
+      seasons: 2,
+      goals: 12,
+      points: 24,
+      cupWon: false,
+      finalTier: 2,
+    }]
+    saveGame(state)
+    const loaded = loadGame()
+    expect(loaded?.hallOfFame.length).toBe(1)
+    expect(loaded?.hallOfFame[0].name).toBe('Smudger')
+  })
+
+  it('preserves player stats and states', () => {
+    const state: SaveState = deepClone(initialSaveState)
+    state.player.stats.strike = 17
+    state.player.states.confidence = 73
+    state.player.traits = ['Aerial Threat', 'Hold-Up Artist']
+    saveGame(state)
+    const loaded = loadGame()
+    expect(loaded?.player.stats.strike).toBe(17)
+    expect(loaded?.player.states.confidence).toBe(73)
+    expect(loaded?.player.traits).toEqual(['Aerial Threat', 'Hold-Up Artist'])
+  })
+})
+
+describe('migrate: v1/v2 legacy save recovery', () => {
+  it('migrates a minimal v1-style save with no traits', () => {
+    const legacyData = {
+      version: 1,
+      seed: 9999,
+      player: { name: 'Gazza', archetype: 'organiser', job: 'teacher', position: 'CM', stats: { touch: 12, strike: 10, pass: 15, engine: 14, graft: 12, head: 11, pace: 10, vibes: 13 }, states: { form: 0, fitness: 90, fatigue: 10, confidence: 55, injuryRisk: 5, managerTrust: 60, teamChemistry: 55, localFame: 5, refereeRep: 50 } },
+      club: 'dog-and-duck',
+      season: { number: 1, tier: 3, week: 3, results: [], aiTable: [], cupExited: false, cupWon: false },
+      npcs: { pete: { relationshipScore: 60, events: [] } },
+    }
+    store['sll_save_v1'] = JSON.stringify(legacyData)
+    const loaded = loadGame()
+    expect(loaded).not.toBeNull()
+    expect(loaded?.player.name).toBe('Gazza')
+    expect(loaded?.player.traits).toEqual([])
+    expect(loaded?.version).toBe(3)
+    expect(store[SAVE_KEY]).toBeDefined()
+    expect(store['sll_save_v1']).toBeUndefined()
+  })
+
+  it('migrates a v2 save and removes the old key', () => {
+    const v2Data = deepClone(initialSaveState)
+    v2Data.version = 2
+    v2Data.player.name = 'Chappers'
+    v2Data.season.week = 7
+    store['sll_save_v2'] = JSON.stringify(v2Data)
+    const loaded = loadGame()
+    expect(loaded?.player.name).toBe('Chappers')
+    expect(loaded?.season.week).toBe(7)
+    expect(loaded?.version).toBe(3)
+    expect(store['sll_save_v2']).toBeUndefined()
+    expect(store[SAVE_KEY]).toBeDefined()
+  })
+})
+
+describe('migrate: partial / corrupted saves', () => {
+  it('returns null for a completely invalid value', () => {
+    store[SAVE_KEY] = 'not-json{'
+    expect(loadGame()).toBeNull()
+  })
+
+  it('fills missing fields with defaults for a partial save', () => {
+    const partial = { version: 3, seed: 42, player: { name: 'Stevo' } }
+    store[SAVE_KEY] = JSON.stringify(partial)
+    const loaded = loadGame()
+    expect(loaded).not.toBeNull()
+    expect(loaded?.player.name).toBe('Stevo')
+    expect(loaded?.season.week).toBe(initialSaveState.season.week)
+    expect(loaded?.hallOfFame).toEqual([])
+  })
+})

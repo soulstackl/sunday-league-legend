@@ -54,6 +54,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
   const opponent = fixture.opponent
   const playerStats = store.player.stats
   const ctx = store.contextModifiers
+  const reducedMotion = store.settings.reducedMotion
 
   // Opponent's keeper profile , better keepers on harder teams.
   // Royal Oak Rovers explicitly note "Their keeper is exceptional".
@@ -323,15 +324,15 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       else outcome = 'GOAL'
       details = lines[Math.floor(Math.random() * lines.length)]
       AudioManager.playGoal()
-      screenShakeRef.current = 12
+      if (!reducedMotion) screenShakeRef.current = 12
       setMatchStats(s => ({ ...s, goals: s.goals + 1 }))
     } else if (b.hitBar) {
       outcome = 'CROSSBAR'
-      details = 'Cannons off the bar! Inches from a goal!'
+      details = "Cannons off the bar! Inches from a goal!"
       AudioManager.playOoh()
     } else if (b.hitPost) {
       outcome = 'WOODWORK'
-      details = 'Off the post! Agony , could\'ve been a worldie.'
+      details = "Off the post! Agony, could've been a worldie."
       AudioManager.playOoh()
     } else if (b.saved) {
       outcome = 'SAVED'
@@ -390,7 +391,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     else setMomentum(m => Math.max(0, m - 10))
 
     setCurrentOutcome({ outcome, details, clampedValue })
-  }, [activeMomentType, opponent.id])
+  }, [activeMomentType, opponent.id, reducedMotion])
 
   const handleInput = useCallback((accuracy: number, power: number, angle: number) => {
     if (simulationFinished.current) return
@@ -433,9 +434,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       const aimOk = angularAlignment > paceTolerance
       if (timingOk && aimOk) {
         AudioManager.playKick('strike')
-        screenShakeRef.current = 6
-        hitStopRef.current = 4
-        resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Crunching tackle , ball won, cleanly.' })
+        if (!reducedMotion) { screenShakeRef.current = 6; hitStopRef.current = 4 }
+        resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Crunching tackle, ball won cleanly.' })
       } else if (!timingOk && distFromPlayer > 110) {
         resolveSimulationOutcome({ outcome: 'EARLY', details: "Dived in too early. He's gone past you." })
       } else if (!timingOk) {
@@ -539,7 +539,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }, baseDelay)
     }
-  }, [activeMomentType, activeCards, energy, momentum, playerStats, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity])
+  }, [activeMomentType, activeCards, energy, momentum, playerStats, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, reducedMotion])
 
   const updateSimulation = useCallback(() => {
     const b = ball.current
@@ -624,15 +624,13 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
           b.vy = Math.abs(b.vy) * 0.4
           b.hitPost = true
           AudioManager.playPost()
-          screenShakeRef.current = 5
-          hitStopRef.current = 3
+          if (!reducedMotion) { screenShakeRef.current = 5; hitStopRef.current = 3 }
         } else if (Math.abs(b.x - 270) < 4) {
           b.vx = Math.abs(b.vx) * 0.5
           b.vy = Math.abs(b.vy) * 0.4
           b.hitPost = true
           AudioManager.playPost()
-          screenShakeRef.current = 5
-          hitStopRef.current = 3
+          if (!reducedMotion) { screenShakeRef.current = 5; hitStopRef.current = 3 }
         }
       }
       if (isShotType && b.y < 8 && b.z > 43 && b.z < 58 && b.x > 130 && b.x < 270) {
@@ -640,8 +638,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         b.vz = -Math.abs(b.vz) * 0.4
         b.hitBar = true
         AudioManager.playPost()
-        screenShakeRef.current = 6
-        hitStopRef.current = 3
+        if (!reducedMotion) { screenShakeRef.current = 6; hitStopRef.current = 3 }
       }
 
       // GOAL detection
@@ -655,20 +652,22 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         else if (inSideThird) b.goalQuality = 'tucked'
         else if (inTopThird) b.goalQuality = 'rising'
         else b.goalQuality = 'standard'
-        timeScaleRef.current = 0.35
-        goalFlashRef.current = 1.0
-        hitStopRef.current = 6
-        screenShakeRef.current = 12
-        b.active = false
-        for (let i = 0; i < 80; i++) {
-          particles.current.push({
-            x: b.x, y: b.y,
-            vx: (Math.random() - 0.5) * 14,
-            vy: -(2 + Math.random() * 9),
-            colour: ['#fff', '#F59E0B', '#DC2626', '#16A34A', '#FEF3C7'][Math.floor(Math.random() * 5)],
-            life: 1.0,
-          })
+        if (!reducedMotion) {
+          timeScaleRef.current = 0.35
+          goalFlashRef.current = 1.0
+          hitStopRef.current = 6
+          screenShakeRef.current = 12
+          for (let i = 0; i < 80; i++) {
+            particles.current.push({
+              x: b.x, y: b.y,
+              vx: (Math.random() - 0.5) * 14,
+              vy: -(2 + Math.random() * 9),
+              colour: ['#fff', '#F59E0B', '#DC2626', '#16A34A', '#FEF3C7'][Math.floor(Math.random() * 5)],
+              life: 1.0,
+            })
+          }
         }
+        b.active = false
         resolveSimulationOutcome()
         return
       }
@@ -698,8 +697,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
           b.saved = true
           b.active = false
           k.state = 'saved'
-          hitStopRef.current = 3
-          screenShakeRef.current = 4
+          if (!reducedMotion) { hitStopRef.current = 3; screenShakeRef.current = 4 }
           resolveSimulationOutcome()
           return
         }
@@ -732,7 +730,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }
     })
-  }, [activeMomentType, pitch, weather, resolveSimulationOutcome])
+  }, [activeMomentType, pitch, weather, resolveSimulationOutcome, reducedMotion])
 
   // Humanoid drawing helper (head + body) , kept inline as per spec
   const drawHumanoid = (
@@ -767,7 +765,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     updateSimulation()
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    const shake = screenShakeRef.current
+    const shake = reducedMotion ? 0 : screenShakeRef.current
     if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake)
 
     // Pitch gradient
@@ -1047,7 +1045,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
     // eslint-disable-next-line react-hooks/immutability
     requestRef.current = requestAnimationFrame(drawFrame)
-  }, [activeMomentType, weather, updateSimulation, playerStats])
+  }, [activeMomentType, weather, updateSimulation, playerStats, reducedMotion])
 
   const getCanvasPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1164,6 +1162,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
           ref={canvasRef}
           width={400}
           height={400}
+          role="img"
+          aria-label={`Match moment: ${info.title} vs ${opponent.name}`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

@@ -93,13 +93,23 @@
 
 - Discord Activity integration is detection and voting UI only. Full SDK init, tunnelling, session persistence and live spectator voting are post-MVP.
 - Cloud saves not implemented. localStorage only.
-- No unit tests yet; engine modules are pure functions so this is the natural next step.
 
 ---
 
-## 6. Build pipeline
+## 6. Unit test coverage
+
+- `engine/rng.ts` , mulberry32 determinism, range, poissonSample mean
+- `engine/league.ts` , initialTable, advanceAiTable, buildStandings, promotion/relegation
+- `engine/schedule.ts` , cup weeks, fallback, bounds, tier routing
+- `engine/chaos.ts` , modifiers, clamping, positive cards
+- `engine/match.ts` , calculateTeamStrength, simulateMatch determinism and xG scaling
+- `engine/endings.ts` , all eight ending paths by scenario
+- `store/persistence.ts` , deepClone, round-trip, v1/v2 migration, partial/corrupted save recovery
+
+## 7. Build pipeline
 
 - `npm run typecheck` , `tsc --noEmit`, no errors
 - `npm run lint` , ESLint with `--max-warnings 0`, no warnings
+- `npm test` , Vitest, 45 tests across 7 files, all passing
 - `npm run build` , Vite production build (334 kB JS, 102 kB gzipped)
 - `npm run deploy:check` , runs the whole chain plus `npm audit`

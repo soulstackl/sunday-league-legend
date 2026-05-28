@@ -92,7 +92,7 @@ export function SettingsScreen({ store, onSaveSettings, onBack, onDeleteSave }: 
         <div>Career events: {store.careerEvents.length}</div>
         <div>Subplots active: {store.subplots.filter(s => !s.resolved).length}</div>
         <div>Save version: {store.version}</div>
-        <button onClick={() => navigator.clipboard?.writeText(String(store.seed))} style={{ marginTop: '4px', padding: '2px 8px', fontSize: '10px', cursor: 'pointer', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--card-bg)' }} aria-label="Copy seed to clipboard">Copy Seed</button>
+        <button onClick={() => navigator.clipboard?.writeText(String(store.seed)).catch(() => {})} style={{ marginTop: '4px', padding: '2px 8px', fontSize: '10px', cursor: 'pointer', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--card-bg)' }} aria-label="Copy seed to clipboard">Copy Seed</button>
       </div>
 
       <button

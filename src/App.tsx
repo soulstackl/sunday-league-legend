@@ -130,21 +130,17 @@ export function App() {
       if (action.effects.vibes) s.player.stats.vibes = Math.min(20, Math.max(1, s.player.stats.vibes + action.effects.vibes))
       if (action.effects.strike) s.player.stats.strike = Math.min(20, Math.max(1, s.player.stats.strike + action.effects.strike))
 
-      // Random stat boost from Train
       if (action.effects.statBoost === 'random') {
         const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEvents.length)
         const k = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
         s.player.stats[k] = Math.min(20, s.player.stats[k] + 1)
       }
-      // Player-chosen stat boost from Gym
       if (statChoice && action.effects.statBoostOptions?.includes(statChoice)) {
         s.player.stats[statChoice] = Math.min(20, s.player.stats[statChoice] + 1)
       }
-      // Targeted relationship patch
       if (action.effects.targetRelationship && npcTarget && s.npcs[npcTarget]) {
         s.npcs[npcTarget].relationshipScore = Math.min(100, s.npcs[npcTarget].relationshipScore + action.effects.targetRelationship)
       }
-      // Context modifiers applied to next match
       if (action.effects.contextModifier === 'opposition-scouted') s.contextModifiers.oppositionScouted = true
       if (action.effects.contextModifier === 'set-piece-ready') s.contextModifiers.setPieceReady = true
 
@@ -227,13 +223,11 @@ export function App() {
       s.player.states.localFame = Math.min(100, s.player.states.localFame + (won ? 4 : 1) + (stats?.goals ?? 0) * 2)
       s.player.states.form = Math.max(-3, Math.min(3, s.player.states.form + (won ? 0.7 : drew ? 0 : -0.6)))
 
-      // Squad relationships and trust nudges
       const trustNudge = won ? 3 : drew ? 0 : -2
       Object.keys(s.npcs).forEach(id => {
         s.npcs[id].relationshipScore = Math.min(100, Math.max(0, s.npcs[id].relationshipScore + trustNudge))
       })
 
-      // Reset per-match context modifiers
       s.contextModifiers.oppositionScouted = false
       s.contextModifiers.setPieceReady = false
 
@@ -604,12 +598,6 @@ export function App() {
 }
 
 function deriveGrowthOffers(store: SaveState): StatKey[] {
-  // Offer three stat options for between-seasons growth, biased towards what the
-  // player has been actively training, but always including at least one weakness.
-  const actions = store.careerEvents.filter(e => e.type === 'midweek_action').map(e => e.action)
-  const trainedCount: Record<string, number> = {}
-  for (const a of actions) if (a) trainedCount[a] = (trainedCount[a] ?? 0) + 1
-
   const ranked: StatKey[] = (Object.entries(store.player.stats) as [StatKey, number][])
     .sort((a, b) => a[1] - b[1])
     .map(([k]) => k)

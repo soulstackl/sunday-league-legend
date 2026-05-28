@@ -54,10 +54,6 @@ export function getLeagueOpponents(tier: 1 | 2 | 3): Opponent[] {
   return TIER_3_OPPONENTS
 }
 
-// Backwards-compatible default export used by older callers expecting OPPONENTS.
-// Tier 3 is the starting league, so this is correct for a fresh career.
-export const OPPONENTS = TIER_3_OPPONENTS
-
 export const TIER_NAMES: Record<1 | 2 | 3, string> = {
   1: 'Premier Division',
   2: 'Division Two',

@@ -19,7 +19,7 @@
 
 **Vite** is the build tool. It handles JSX/TSX compilation natively (no Babel standalone), provides instant HMR during development, tree-shakes the output, and minifies the production bundle.
 
-**React 18** is the UI framework. The existing codebase is already React-shaped , all components, hooks, and state patterns carry over directly.
+**React 19** is the UI framework. The existing codebase is already React-shaped, all components, hooks, and state patterns carry over directly.
 
 **TypeScript** adds type safety across the game engine, state model, and component props. Catching shape errors at compile time matters especially for the save schema and moment resolution logic.
 
@@ -110,16 +110,16 @@ sll/
 
 ```json
 {
-  "react": "^18",
-  "react-dom": "^18",
-  "@discord/embedded-app-sdk": "latest"
+  "react": "^19",
+  "react-dom": "^19",
+  "@discord/embedded-app-sdk": "^2"
 }
 
 devDependencies: {
-  "vite": "^5",
-  "@vitejs/plugin-react": "^4",
-  "typescript": "^5",
-  "vitest": "^1"
+  "vite": "^8",
+  "@vitejs/plugin-react": "^6",
+  "typescript": "^6",
+  "vitest": "^4"
 }
 ```text
 
@@ -201,9 +201,9 @@ A typical SLL session involves 10-20 WebSocket connections and a few hundred mes
 
 Career saves, Hall of Fame, and settings are stored in `localStorage` using the existing v2 schema with migration logic. This requires no network, works offline, and is already implemented.
 
-Save key: `sll_save_v2`
+Save key: `sll_save_v3`
 
-Schema versioning is in place. Future migrations follow the existing v1 → v2 pattern.
+Schema versioning is in place. Future migrations follow the existing v1/v2 → v3 pattern.
 
 ---
 

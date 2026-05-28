@@ -1,7 +1,7 @@
 import type { Opponent } from '../types/game'
 
 // The Tankard, the local Sunday League cup. Three rounds in the season:
-// quarter-final (week 4), semi-final (week 8), final (week 12 weekend after).
+// quarter-final (week 4), semi-final (week 8), final (week 15).
 // Cup ties replace the league fixture that week.
 export const CUP_OPPONENTS: Record<'quarter-final' | 'semi-final' | 'final', Opponent> = {
   'quarter-final': {
