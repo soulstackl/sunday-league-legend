@@ -1,10 +1,15 @@
 import { useState } from 'react'
+import { Activity, Bed, Dumbbell, Beer, Briefcase, Eye, Heart, Target, type LucideProps } from 'lucide-react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { DiscordVotePanel } from '../components/discord/DiscordVotePanel'
 import { NpcAvatar } from '../components/shared/NpcAvatar'
 import { MIDWEEK_ACTIONS } from '../data/midweek-actions'
 import { NPCS } from '../data/npcs'
 import type { SaveState, MidweekAction, StatKey } from '../types/game'
+
+const ACTION_ICONS: Record<string, React.ComponentType<LucideProps>> = {
+  Activity, Bed, Dumbbell, Beer, Briefcase, Eye, Heart, Target,
+}
 
 interface MidweekScreenProps {
   store: SaveState
@@ -18,7 +23,6 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
   const [statChoice, setStatChoice] = useState<StatKey | null>(null)
   const [npcTarget, setNpcTarget] = useState<string | null>(null)
 
-  // patchrelationship is only available when at least one NPC's relationship is shaky
   const available = MIDWEEK_ACTIONS.filter(act => {
     if (act.id === 'patchrelationship') {
       return Object.values(store.npcs).some(n => n.relationshipScore < 50)
@@ -51,10 +55,13 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
   }
 
   return (
-    <ScreenContainer style={{ background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '22px', color: 'var(--charcoal)' }}>Midweek Action</h2>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--charcoal)', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+    <ScreenContainer>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>Midweek</h2>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>How do you spend the week?</p>
+        </div>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '6px 8px', fontFamily: 'var(--font-ui)' }}>Cancel</button>
       </div>
 
       {isDiscord && !selected && (
@@ -64,68 +71,77 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-        {available.map(act => (
-          <div
-            key={act.id}
-            role="button"
-            tabIndex={0}
-            aria-label={`Select midweek action: ${act.name}`}
-            aria-pressed={selected?.id === act.id}
-            onClick={() => { setSelected(act); setStatChoice(null); setNpcTarget(null) }}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelected(act); setStatChoice(null); setNpcTarget(null) } }}
-            style={{
-              background: 'var(--card-bg)',
-              border: selected?.id === act.id ? '3px solid var(--kit-amber)' : '2px solid var(--border)',
-              borderRadius: '8px',
-              padding: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '20px' }}>{act.icon}</span>
-              <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{act.name}</span>
+        {available.map(act => {
+          const isSel = selected?.id === act.id
+          const IconComponent = ACTION_ICONS[act.icon]
+          return (
+            <div
+              key={act.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select midweek action: ${act.name}`}
+              aria-pressed={isSel}
+              onClick={() => { setSelected(act); setStatChoice(null); setNpcTarget(null) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelected(act); setStatChoice(null); setNpcTarget(null) } }}
+              style={{
+                background: isSel ? 'var(--surface-raised)' : 'var(--card-bg)',
+                border: isSel ? '1px solid var(--accent)' : '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '12px 14px',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                {IconComponent && (
+                  <div style={{ color: isSel ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>
+                    <IconComponent size={18} />
+                  </div>
+                )}
+                <span style={{ fontWeight: 700, fontSize: '15px', color: isSel ? 'var(--accent)' : 'var(--text)' }}>{act.name}</span>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.4', paddingLeft: '28px' }}>{act.description}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', fontSize: '10px', fontFamily: 'var(--font-mono)', paddingLeft: '28px' }}>
+                {Object.entries(act.effects).map(([k, v]) => {
+                  let text = ''
+                  if (k === 'statBoost') text = '+1 Random Stat'
+                  else if (k === 'statBoostOptions') text = `Choose: ${(v as string[]).join(', ').toUpperCase()}`
+                  else if (k === 'targetRelationship') text = `+${v} Relationship`
+                  else if (k === 'hangoverRisk') text = 'Hangover Risk'
+                  else if (k === 'contextModifier') text = String(v) === 'opposition-scouted' ? 'Accuracy +' : 'Set Pieces +'
+                  else if (k === 'specialModifier') text = String(v)
+                  else if (typeof v === 'number') text = `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`
+                  if (!text) return null
+                  return (
+                    <span key={k} style={{ padding: '2px 7px', borderRadius: '5px', background: 'var(--surface)', color: 'var(--text-muted)', fontWeight: 700, border: '1px solid var(--border)' }}>
+                      {text}
+                    </span>
+                  )
+                })}
+              </div>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--warm-grey)', marginBottom: '8px' }}>{act.description}</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
-              {Object.entries(act.effects).map(([k, v]) => {
-                let text = ''
-                if (k === 'statBoost') text = '+1 Random Stat'
-                else if (k === 'statBoostOptions') text = `Choose: ${(v as string[]).join(', ').toUpperCase()}`
-                else if (k === 'targetRelationship') text = `+${v} Relationship`
-                else if (k === 'hangoverRisk') text = 'Hangover Risk'
-                else if (k === 'contextModifier') text = String(v) === 'opposition-scouted' ? 'Match: Accuracy +' : 'Set Pieces: Power +'
-                else if (k === 'specialModifier') text = String(v)
-                else if (typeof v === 'number') text = `${v > 0 ? '+' : ''}${v} ${k.toUpperCase()}`
-                if (!text) return null
-
-                return (
-                  <span key={k} style={{ padding: '2px 6px', borderRadius: '4px', background: 'var(--surface)', fontWeight: 'bold' }}>
-                    {text}
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {selected?.statChoice && selected.effects.statBoostOptions && (
-        <div style={{ background: 'var(--card-bg)', border: '2px dashed var(--kit-amber)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>Pick a focus:</div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--accent-bg-strong)', borderRadius: '12px', padding: '14px', marginBottom: '12px' }}>
+          <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '10px', color: 'var(--text)' }}>Pick your focus:</div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {selected.effects.statBoostOptions.map(k => (
               <button
                 key={k}
                 onClick={() => setStatChoice(k)}
                 style={{
-                  padding: '8px 12px',
-                  background: statChoice === k ? 'var(--kit-amber)' : 'var(--surface)',
-                  color: 'var(--charcoal)',
-                  border: statChoice === k ? '2px solid var(--charcoal)' : '1px solid var(--border)',
-                  borderRadius: '16px',
-                  fontWeight: 'bold',
+                  padding: '8px 14px',
+                  background: statChoice === k ? 'var(--accent)' : 'var(--surface-raised)',
+                  color: statChoice === k ? '#0C0C10' : 'var(--text)',
+                  border: statChoice === k ? 'none' : '1px solid var(--border)',
+                  borderRadius: '20px',
+                  fontWeight: 700,
                   fontSize: '13px',
                   cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
                 }}
               >
                 {k.toUpperCase()} ({store.player.stats[k]})
@@ -136,8 +152,8 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
       )}
 
       {selected?.npcTarget && patchCandidates.length > 0 && (
-        <div style={{ background: 'var(--card-bg)', border: '2px dashed var(--kit-amber)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>Patch up with:</div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--accent-bg-strong)', borderRadius: '12px', padding: '14px', marginBottom: '12px' }}>
+          <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '10px', color: 'var(--text)' }}>Patch up with:</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {patchCandidates.map(id => {
               const npc = NPCS[id]
@@ -148,17 +164,18 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
                   onClick={() => setNpcTarget(id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '6px 12px',
-                    background: isSel ? 'var(--kit-amber)' : 'var(--surface)',
-                    color: 'var(--charcoal)',
-                    border: isSel ? '2px solid var(--charcoal)' : '1px solid var(--border)',
+                    padding: '7px 12px',
+                    background: isSel ? 'var(--accent)' : 'var(--surface-raised)',
+                    color: isSel ? '#0C0C10' : 'var(--text)',
+                    border: isSel ? 'none' : '1px solid var(--border)',
                     borderRadius: '20px',
-                    fontWeight: 'bold',
+                    fontWeight: 700,
                     fontSize: '13px',
                     cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)',
                   }}
                 >
-                  <NpcAvatar npcId={id} size={24} />
+                  <NpcAvatar npcId={id} size={22} />
                   <span>{npc?.name} ({store.npcs[id].relationshipScore})</span>
                 </button>
               )
@@ -172,10 +189,11 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
         onClick={confirm}
         style={{
           width: '100%', padding: '16px',
-          background: canConfirm ? 'var(--kit-amber)' : 'var(--warm-grey)',
-          color: 'var(--charcoal)',
-          border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold',
-          cursor: canConfirm ? 'pointer' : 'not-allowed', boxShadow: '0 4px 0px var(--charcoal)', marginTop: 'auto',
+          background: canConfirm ? 'var(--accent)' : 'var(--surface-raised)',
+          color: canConfirm ? '#0C0C10' : 'var(--text-faint)',
+          border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
+          cursor: canConfirm ? 'pointer' : 'not-allowed',
+          letterSpacing: '0.04em', marginTop: 'auto',
         }}
       >
         CONFIRM ACTION

@@ -15,8 +15,6 @@ export function DiscordVotePanel({ options, onVoteComplete }: Props) {
   const [votes, setVotes] = useState<Record<string, number>>({})
   const [timeLeft, setTimeLeft] = useState(15)
 
-  // Refs keep the interval closure up-to-date without restarting the timer.
-  // Updated after every render (not during render , React 19 refs rule).
   const votesRef = useRef(votes)
   const optionsRef = useRef(options)
   const onVoteCompleteRef = useRef(onVoteComplete)
@@ -49,19 +47,19 @@ export function DiscordVotePanel({ options, onVoteComplete }: Props) {
   }, [])
 
   return (
-    <Card style={{ background: 'var(--charcoal)', color: 'var(--cream)', border: '2px solid var(--kit-amber)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--kit-amber)' }}>AUDIENCE VOTING</span>
-        <span style={{ fontSize: '11px', fontWeight: 'bold' }}>{timeLeft}s LEFT</span>
+    <Card style={{ background: 'var(--surface)', border: '1px solid var(--accent-bg-strong)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Audience Voting</span>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{timeLeft}s</span>
       </div>
-      <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginBottom: '12px', overflow: 'hidden' }}>
-        <div style={{ width: `${(timeLeft / 15) * 100}%`, height: '100%', background: 'var(--kit-amber)', transition: 'width 1s linear' }} />
+      <div style={{ height: '3px', background: 'var(--surface-raised)', borderRadius: '2px', marginBottom: '14px', overflow: 'hidden' }}>
+        <div style={{ width: `${(timeLeft / 15) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 1s linear', borderRadius: '2px' }} />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {options.slice(0, 3).map(opt => (
-          <div key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-            <span>{opt.name}</span>
-            <span style={{ fontWeight: 'bold' }}>{votes[opt.id] ?? 0} votes</span>
+          <div key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+            <span style={{ color: 'var(--text)' }}>{opt.name}</span>
+            <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{votes[opt.id] ?? 0}</span>
           </div>
         ))}
       </div>

@@ -1,6 +1,6 @@
+import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Settings, CheckCircle2 } from 'lucide-react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
-import { Card } from '../components/shared/Card'
 import { StatusBar } from '../components/shared/StatusBar'
 import { ARCHETYPES } from '../data/archetypes'
 import { JOBS } from '../data/jobs'
@@ -45,123 +45,165 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
     store.contextModifiers.setPieceReady ? 'Set Pieces Sharp' : null,
   ].filter(Boolean) as string[]
 
+  const navBtn = (label: string, icon: React.ReactNode, onClick: () => void, badge?: number) => (
+    <button
+      aria-label={label}
+      onClick={onClick}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+        padding: '14px 8px',
+        background: 'var(--surface)',
+        color: 'var(--text)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        fontWeight: 700,
+        fontSize: '10px',
+        letterSpacing: '0.06em',
+        cursor: 'pointer',
+        position: 'relative',
+        fontFamily: 'var(--font-ui)',
+      }}
+    >
+      {icon}
+      <span>{label.toUpperCase()}</span>
+      {badge != null && badge > 0 && (
+        <span style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', background: 'var(--danger)', color: '#fff', borderRadius: '50%', fontSize: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+          {badge}
+        </span>
+      )}
+    </button>
+  )
+
   return (
-    <ScreenContainer style={{ background: 'var(--charcoal)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <ScreenContainer style={{ background: 'var(--bg)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--kit-amber)', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
-              Season {store.season.number} · {tierName} · Week {week}/{TOTAL_WEEKS}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>
+              S{store.season.number} · {tierName} · Wk {week}/{TOTAL_WEEKS}
             </span>
             {isDiscord && (
-              <div style={{ background: 'var(--danger)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold' }}>LIVE</div>
+              <div style={{ background: 'var(--danger)', color: '#fff', padding: '2px 7px', borderRadius: '4px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</div>
             )}
           </div>
-          <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '24px', color: 'var(--cream)' }}>{p.name}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>{p.name}</h2>
         </div>
-        <Badge size={44} />
+        <Badge size={42} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-        <div style={{ background: 'var(--card-bg)', padding: '10px', borderRadius: '8px', border: '2px solid var(--border)' }}>
-          <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--warm-grey)', fontWeight: 'bold' }}>Job / Role</div>
-          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{JOBS.find(j => j.id === p.job)?.name ?? 'Jobless'}</div>
-        </div>
-        <div style={{ background: 'var(--card-bg)', padding: '10px', borderRadius: '8px', border: '2px solid var(--border)' }}>
-          <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--warm-grey)', fontWeight: 'bold' }}>Archetype</div>
-          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{ARCHETYPES.find(a => a.id === p.archetype)?.name ?? 'The Unit'}</div>
-        </div>
+      {/* Identity chips */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+        {[
+          { label: 'Job', value: JOBS.find(j => j.id === p.job)?.name ?? 'Jobless' },
+          { label: 'Archetype', value: ARCHETYPES.find(a => a.id === p.archetype)?.name ?? 'The Unit' },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '3px' }}>{label}</div>
+            <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text)' }}>{value}</div>
+          </div>
+        ))}
       </div>
 
-      <div style={{ background: 'var(--card-bg)', padding: '12px', borderRadius: '8px', border: '2px solid var(--border)', marginBottom: '16px' }}>
+      {/* Status bars */}
+      <div style={{ background: 'var(--card-bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '14px' }}>
         <StatusBar label="Fitness" value={p.states.fitness} colour="var(--success)" />
         <StatusBar label="Fatigue" value={p.states.fatigue} colour="var(--danger)" />
-        <StatusBar label="Morale / Confidence" value={p.states.confidence} colour="var(--kit-amber)" />
-        <StatusBar label="Manager Trust" value={p.states.managerTrust} colour="#8B5CF6" />
+        <StatusBar label="Confidence" value={p.states.confidence} colour="var(--accent)" />
+        <StatusBar label="Manager Trust" value={p.states.managerTrust} colour="var(--purple)" />
       </div>
 
-      <Card style={{ background: 'var(--charcoal)', color: 'var(--cream)', border: '2px solid var(--border)', marginBottom: '16px' }}>
-        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--kit-amber)', fontWeight: 'bold', fontFamily: 'var(--font-mono)', marginBottom: '8px' }}>Season Totals</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{totalGoals}</div>
-            <div style={{ fontSize: '8px', opacity: 0.7, textTransform: 'uppercase' }}>Goals</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{totalPasses ? Math.round((totalPassSuccess / totalPasses) * 100) : 0}%</div>
-            <div style={{ fontSize: '8px', opacity: 0.7, textTransform: 'uppercase' }}>Pass %</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{totalTackles}</div>
-            <div style={{ fontSize: '8px', opacity: 0.7, textTransform: 'uppercase' }}>Tackles</div>
-          </div>
+      {/* Season totals */}
+      <div style={{ background: 'var(--card-bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '14px' }}>
+        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', marginBottom: '12px' }}>Season Totals</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
+          {[
+            { value: totalGoals, label: 'Goals' },
+            { value: `${totalPasses ? Math.round((totalPassSuccess / totalPasses) * 100) : 0}%`, label: 'Pass %' },
+            { value: totalTackles, label: 'Tackles' },
+          ].map(({ value, label }) => (
+            <div key={label}>
+              <div style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{value}</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+            </div>
+          ))}
         </div>
-      </Card>
+      </div>
 
+      {/* Next up */}
       {fixture ? (
-        <Card style={{ background: 'var(--charcoal)', color: 'var(--cream)', border: '2px solid var(--border)' }}>
-          <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--kit-amber)', fontWeight: 'bold', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
+        <div style={{ background: 'var(--card-bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+          <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', marginBottom: '6px' }}>
             Next Up · {fixtureTitle}
           </div>
-          <h3 style={{ fontFamily: 'var(--font-primary)', fontSize: '18px', marginBottom: '4px' }}>vs {fixture.opponent.name}</h3>
-          <div style={{ fontSize: '12px', color: 'var(--cream)', opacity: 0.85 }}>Style: {fixture.opponent.style}</div>
-          <div style={{ fontSize: '11px', color: 'var(--kit-amber)', marginTop: '4px' }}>Difficulty: {fixture.opponent.difficulty}/10</div>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>vs {fixture.opponent.name}</h3>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Style: {fixture.opponent.style}</div>
+          <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '3px' }}>Difficulty: {fixture.opponent.difficulty}/10</div>
           {ctxBadges.length > 0 && (
-            <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
               {ctxBadges.map(b => (
-                <span key={b} style={{ background: 'var(--success)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>✓ {b}</span>
+                <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--success-bg)', color: 'var(--success)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}>
+                  <CheckCircle2 size={11} />
+                  {b}
+                </span>
               ))}
             </div>
           )}
-        </Card>
+        </div>
       ) : (
-        <Card style={{ background: 'var(--charcoal)', color: 'var(--cream)', border: '2px solid var(--border)' }}>
-          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Season over. Head to summary.</div>
-        </Card>
+        <div style={{ background: 'var(--card-bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-muted)' }}>Season over. Head to summary.</div>
+        </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px', marginTop: '16px' }}>
-        <button
-          aria-label="Choose midweek action"
-          onClick={onMidweek}
-          style={{ padding: '12px', background: 'var(--cream)', color: 'var(--charcoal)', border: '2px solid var(--charcoal)', borderRadius: '6px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', boxShadow: '0 2px 0px var(--charcoal)' }}
-        >
-          🗓️ MIDWEEK
-        </button>
-        <button
-          aria-label="Open team group chat"
-          onClick={onGroupChat}
-          style={{ padding: '12px', background: 'var(--card-bg)', color: 'var(--charcoal)', border: '2px solid var(--border)', borderRadius: '6px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', position: 'relative' }}
-        >
-          💬 TEAM CHAT
-          {unreadCount > 0 && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '16px', height: '16px', background: 'var(--danger)', color: '#fff', borderRadius: '50%', fontSize: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{unreadCount}</span>}
-        </button>
+      {/* Primary nav grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
+        {navBtn('Midweek', <CalendarDays size={20} />, onMidweek)}
+        {navBtn('Chat', <MessageCircle size={20} />, onGroupChat, unreadCount)}
+        {navBtn('Squad', <Users size={20} />, onSquad)}
+        {navBtn('Table', <BarChart3 size={20} />, onTable)}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
-        <button aria-label="View squad" onClick={onSquad} style={{ padding: '10px', background: 'var(--card-bg)', color: 'var(--charcoal)', border: '2px solid var(--border)', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-          👥 SQUAD
-        </button>
-        <button aria-label="View league table" onClick={onTable} style={{ padding: '10px', background: 'var(--card-bg)', color: 'var(--charcoal)', border: '2px solid var(--border)', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
-          📊 TABLE
-        </button>
-      </div>
-
+      {/* Kick off */}
       <button
         aria-label="Kick off this week's match"
         disabled={!fixture}
         onClick={onNextMatch}
-        style={{ width: '100%', padding: '16px', background: fixture ? 'var(--kit-amber)' : 'var(--warm-grey)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: fixture ? 'pointer' : 'not-allowed', boxShadow: '0 4px 0px var(--charcoal)', marginBottom: '12px' }}
+        style={{
+          width: '100%', padding: '18px',
+          background: fixture ? 'var(--accent)' : 'var(--surface-raised)',
+          color: fixture ? '#0C0C10' : 'var(--text-faint)',
+          border: 'none',
+          borderRadius: '14px',
+          fontSize: '16px',
+          fontWeight: 700,
+          cursor: fixture ? 'pointer' : 'not-allowed',
+          marginBottom: '10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+          letterSpacing: '0.04em',
+        }}
       >
-        ⚽ {fixture?.kind === 'cup' ? cupRoundLabel(fixture.cupRound as 'quarter-final' | 'semi-final' | 'final').toUpperCase() : 'KICK OFF MATCH'}
+        <CircleDot size={20} />
+        {fixture?.kind === 'cup' ? cupRoundLabel(fixture.cupRound as 'quarter-final' | 'semi-final' | 'final').toUpperCase() : 'KICK OFF MATCH'}
       </button>
 
+      {/* Utility row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-        <button aria-label="Open settings" onClick={onSettings} style={{ padding: '8px', background: 'none', border: '1px solid var(--border)', color: 'var(--cream)', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
-          ⚙️ Settings
+        <button
+          aria-label="Open settings"
+          onClick={onSettings}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-faint)', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+        >
+          <Settings size={13} />
+          Settings
         </button>
-        <button aria-label="View Hall of Fame" onClick={onHall} style={{ padding: '8px', background: 'none', border: '1px solid var(--border)', color: 'var(--cream)', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
-          🏆 Hall of Fame
+        <button
+          aria-label="View Hall of Fame"
+          onClick={onHall}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-faint)', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+        >
+          <Trophy size={13} />
+          Hall of Fame
         </button>
       </div>
     </ScreenContainer>

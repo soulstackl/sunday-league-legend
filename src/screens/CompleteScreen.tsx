@@ -1,3 +1,4 @@
+import { Trophy } from 'lucide-react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { Card } from '../components/shared/Card'
@@ -23,40 +24,60 @@ export function CompleteScreen({ store, resolveEnding, onHallOfFame, onNextSeaso
   const tierName = TIER_NAMES[store.season.tier]
   const nextTierName = TIER_NAMES[promo.newTier]
 
-  const movementColour = promo.movement === 'promoted' ? 'var(--success)' : promo.movement === 'relegated' ? 'var(--danger)' : 'var(--kit-amber)'
-  const movementLabel = promo.movement === 'promoted' ? `PROMOTED to ${nextTierName}` : promo.movement === 'relegated' ? `RELEGATED to ${nextTierName}` : `Holding in ${tierName}`
+  const movementColour = promo.movement === 'promoted' ? 'var(--success)' : promo.movement === 'relegated' ? 'var(--danger)' : 'var(--accent)'
+  const movementBg = promo.movement === 'promoted' ? 'var(--success-bg)' : promo.movement === 'relegated' ? 'var(--danger-bg)' : 'var(--accent-bg)'
+  const movementBorder = promo.movement === 'promoted' ? 'rgba(34,197,94,0.25)' : promo.movement === 'relegated' ? 'rgba(244,63,94,0.25)' : 'rgba(240,168,48,0.25)'
+  const movementLabel = promo.movement === 'promoted' ? `Promoted to ${nextTierName}` : promo.movement === 'relegated' ? `Relegated to ${nextTierName}` : `Holding in ${tierName}`
 
   return (
-    <ScreenContainer style={{ background: 'var(--charcoal)', textAlign: 'center' }}>
-      <Badge size={100} />
-      <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '28px', color: 'var(--cream)', margin: '16px 0 4px' }}>Season {store.season.number} Complete</h2>
-      <div style={{ fontSize: '12px', color: 'var(--kit-amber)', marginBottom: '12px' }}>{tierName} · Finished {position} of {standings.length}</div>
+    <ScreenContainer style={{ textAlign: 'center' }}>
+      <Badge size={88} />
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'var(--text)', margin: '14px 0 3px' }}>Season {store.season.number} Complete</h2>
+      <div style={{ fontSize: '12px', color: 'var(--accent)', marginBottom: '16px', fontFamily: 'var(--font-mono)' }}>{tierName} · {position}{['st','nd','rd'][position-1] ?? 'th'} of {standings.length}</div>
 
-      <Card style={{ margin: '20px 0', border: '3px solid var(--charcoal)', background: '#fff' }}>
-        <div style={{ textTransform: 'uppercase', color: 'var(--kit-amber-dark)', fontWeight: 'bold', fontSize: '12px' }}>Your Career Title:</div>
-        <h1 style={{ fontFamily: 'var(--font-primary)', fontSize: '24px', margin: '8px 0' }}>{ending.title}</h1>
-        <p style={{ fontSize: '14px', color: 'var(--warm-grey)' }}>"{ending.text}"</p>
+      {/* Career title card */}
+      <Card style={{ marginBottom: '12px', textAlign: 'left' }}>
+        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '6px' }}>Career Title</div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>{ending.title}</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', fontStyle: 'italic' }}>"{ending.text}"</p>
       </Card>
 
-      <Card style={{ background: movementColour, color: '#fff', marginBottom: '16px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>{movementLabel}</div>
-      </Card>
-
-      <div style={{ background: 'var(--charcoal)', color: 'var(--cream)', width: '100%', padding: '16px', borderRadius: '8px', marginBottom: '20px', fontFamily: 'var(--font-mono)', border: '1px solid var(--border)' }}>
-        <h4 style={{ color: 'var(--kit-amber)' }}>SEASON SUMMARY</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px', textAlign: 'left' }}>
-          <div>League Points: {points}</div>
-          <div>League Goals: {goals}</div>
-          <div>Cup: {store.season.cupWon ? 'WON 🏆' : store.season.cupExited ? 'Eliminated' : 'No run'}</div>
-          <div>Manager Trust: {store.player.states.managerTrust}/100</div>
-        </div>
+      {/* Movement banner */}
+      <div style={{ background: movementBg, border: `1px solid ${movementBorder}`, borderRadius: '12px', padding: '12px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+        <div style={{ fontWeight: 700, fontSize: '15px', color: movementColour, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{movementLabel}</div>
       </div>
 
-      <button className="sll-btn" onClick={() => onHallOfFame(ending.title)} style={{ marginBottom: '12px' }}>
+      {/* Season summary */}
+      <Card style={{ marginBottom: '20px', textAlign: 'left' }}>
+        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'var(--font-mono)', marginBottom: '10px' }}>Season Summary</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+          <div><span style={{ color: 'var(--text)', fontWeight: 700 }}>{points}</span> pts</div>
+          <div><span style={{ color: 'var(--text)', fontWeight: 700 }}>{goals}</span> goals</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {store.season.cupWon ? (
+              <><Trophy size={12} style={{ color: 'var(--accent)' }} /><span style={{ color: 'var(--accent)', fontWeight: 700 }}>Tankard won</span></>
+            ) : store.season.cupExited ? (
+              <span>Cup: eliminated</span>
+            ) : (
+              <span>No cup run</span>
+            )}
+          </div>
+          <div>Trust: <span style={{ color: 'var(--text)', fontWeight: 700 }}>{store.player.states.managerTrust}</span>/100</div>
+        </div>
+      </Card>
+
+      <button
+        className="sll-btn"
+        onClick={() => onHallOfFame(ending.title)}
+        style={{ marginBottom: '10px' }}
+      >
         RETIRE TO HALL OF FAME
       </button>
 
-      <button className="sll-btn" onClick={onNextSeason} style={{ background: 'var(--cream)', color: 'var(--charcoal)' }}>
+      <button
+        className="sll-btn sll-btn--secondary"
+        onClick={onNextSeason}
+      >
         PLAY SEASON {store.season.number + 1}
       </button>
     </ScreenContainer>

@@ -14,8 +14,8 @@ export function ChatBubble({ message, onChoice }: Props) {
 
   if (isSystem) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0', animation: 'fadeIn 0.3s ease' }}>
-        <div style={{ background: 'var(--border)', color: 'var(--charcoal)', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontFamily: 'var(--font-mono)', border: '1px solid rgba(0,0,0,0.05)' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0', animation: 'fadeIn 0.3s ease' }}>
+        <div style={{ background: 'var(--surface)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontFamily: 'var(--font-mono)', border: '1px solid var(--border)' }}>
           {message.text}
         </div>
       </div>
@@ -23,33 +23,40 @@ export function ChatBubble({ message, onChoice }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: isPlayer ? 'flex-end' : 'flex-start', marginBottom: '10px', alignItems: 'flex-end', gap: '6px', animation: 'slideUp 0.3s ease-out' }}>
-      {!isPlayer && <NpcAvatar npcId={message.sender} size={30} />}
+    <div style={{ display: 'flex', justifyContent: isPlayer ? 'flex-end' : 'flex-start', marginBottom: '12px', alignItems: 'flex-end', gap: '8px', animation: 'slideUp 0.25s ease-out' }}>
+      {!isPlayer && <NpcAvatar npcId={message.sender} size={28} />}
       <div style={{
-        maxWidth: '75%',
-        background: isPlayer ? 'var(--cream)' : 'var(--card-bg)',
-        border: '2px solid var(--border)',
-        borderRadius: isPlayer ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-        padding: '8px 12px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+        maxWidth: '78%',
+        background: isPlayer ? 'var(--accent-bg-strong)' : 'var(--surface)',
+        border: `1px solid ${isPlayer ? 'rgba(240,168,48,0.25)' : 'var(--border)'}`,
+        borderRadius: isPlayer ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+        padding: '10px 14px',
       }}>
         {!isPlayer && (
-          <div style={{ fontSize: '11px', fontWeight: 'bold', color: senderNpc?.bg ?? 'var(--charcoal)', marginBottom: '2px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: senderNpc?.bg ?? 'var(--accent)', marginBottom: '3px', letterSpacing: '0.02em' }}>
             {senderNpc?.name}
           </div>
         )}
-        <div style={{ fontSize: '14px', lineHeight: '1.4' }}>{message.text}</div>
+        <div style={{ fontSize: '14px', lineHeight: '1.45', color: 'var(--text)' }}>{message.text}</div>
 
         {message.choices && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px', borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
             {message.choices.map((c, i) => (
               <button
                 key={i}
                 onClick={() => onChoice(c)}
                 style={{
-                  background: 'rgba(255,255,255,0.7)', border: '1px solid var(--charcoal)', borderRadius: '16px',
-                  padding: '6px 12px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
-                  textAlign: 'left', transition: 'background 0.2s',
+                  background: 'var(--surface-raised)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  color: 'var(--text)',
+                  transition: 'background 0.15s',
+                  fontFamily: 'var(--font-ui)',
                 }}
               >
                 {c.text}
@@ -58,7 +65,7 @@ export function ChatBubble({ message, onChoice }: Props) {
           </div>
         )}
 
-        <div style={{ fontSize: '9px', textAlign: 'right', color: 'var(--warm-grey)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ fontSize: '10px', textAlign: 'right', color: 'var(--text-faint)', marginTop: '5px', fontFamily: 'var(--font-mono)' }}>
           {message.time}
         </div>
       </div>

@@ -11,7 +11,9 @@ export function NameScreen({ onNext }: NameScreenProps) {
 
   return (
     <ScreenContainer>
-      <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '24px', marginBottom: '16px', color: 'var(--cream)' }}>Enter Your Legend Name</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, marginBottom: '6px', color: 'var(--text)' }}>Enter Your Legend Name</h2>
+      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>What do they call you down the Dog &amp; Duck?</p>
+
       <input
         aria-label="Enter your legend name"
         type="text"
@@ -19,14 +21,19 @@ export function NameScreen({ onNext }: NameScreenProps) {
         onChange={(e) => setName(e.target.value)}
         placeholder="e.g. Gazza"
         maxLength={18}
-        style={{ width: '100%', padding: '16px', fontSize: '18px', border: '3px solid var(--charcoal)', borderRadius: '8px', marginBottom: '16px', fontFamily: 'var(--font-mono)' }}
+        style={{ width: '100%', padding: '16px', fontSize: '18px', border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '16px', fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)' }}
       />
 
       <div style={{ marginBottom: 'auto' }}>
-        <div style={{ fontSize: '13px', color: 'var(--cream)', marginBottom: '8px', fontWeight: 'bold' }}>Suggestions:</div>
+        <div style={{ fontSize: '12px', color: 'var(--text-faint)', marginBottom: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Suggestions</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {suggestions.map(s => (
-            <button key={s} aria-label={`Use name ${s}`} onClick={() => setName(s)} style={{ padding: '8px 12px', background: 'var(--border)', color: 'var(--charcoal)', border: 'none', borderRadius: '16px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}>
+            <button
+              key={s}
+              aria-label={`Use name ${s}`}
+              onClick={() => setName(s)}
+              style={{ padding: '8px 14px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '20px', fontSize: '14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-ui)' }}
+            >
               {s}
             </button>
           ))}
@@ -36,9 +43,16 @@ export function NameScreen({ onNext }: NameScreenProps) {
       <button
         disabled={!name.trim()}
         onClick={() => onNext(name)}
-        style={{ width: '100%', padding: '16px', background: name.trim() ? 'var(--kit-amber)' : 'var(--warm-grey)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: name.trim() ? 'pointer' : 'not-allowed', boxShadow: '0 4px 0px var(--charcoal)' }}
+        style={{
+          width: '100%', padding: '16px',
+          background: name.trim() ? 'var(--accent)' : 'var(--surface-raised)',
+          color: name.trim() ? '#0C0C10' : 'var(--text-faint)',
+          border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
+          cursor: name.trim() ? 'pointer' : 'not-allowed',
+          letterSpacing: '0.04em', marginTop: '20px',
+        }}
       >
-        NEXT: PICK ARCHETYPE →
+        NEXT: PICK ARCHETYPE
       </button>
     </ScreenContainer>
   )

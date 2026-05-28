@@ -1,3 +1,4 @@
+import { Trophy, Settings } from 'lucide-react'
 import { Badge } from '../components/shared/Badge'
 
 interface TitleScreenProps {
@@ -10,34 +11,57 @@ interface TitleScreenProps {
 
 export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: TitleScreenProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '24px', textAlign: 'center' }}>
-      <div style={{ animation: 'bounce 2s infinite', marginBottom: '20px' }}>
-        <Badge size={110} />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px 24px', textAlign: 'center', gap: '0' }}>
+      <div style={{ animation: 'bounce 2.5s infinite', marginBottom: '24px' }}>
+        <Badge size={100} />
       </div>
-      <h1 style={{ fontFamily: 'var(--font-primary)', fontSize: '32px', marginBottom: '8px', color: 'var(--cream)', textShadow: '2px 2px 0px var(--charcoal)' }}>
-        Sunday League
-      </h1>
-      <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '28px', color: 'var(--kit-amber)', textShadow: '2px 2px 0px var(--charcoal)', marginBottom: '32px' }}>
-        Legend
-      </h2>
 
-      <button aria-label="Start a new career" onClick={onNew} style={{ width: '100%', padding: '16px', background: 'var(--kit-amber)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px', boxShadow: '0 4px 0px var(--charcoal)' }}>
-        NEW CAREER
-      </button>
+      <div style={{ marginBottom: '40px' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '34px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, marginBottom: '4px' }}>
+          Sunday League
+        </h1>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '34px', fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>
+          Legend
+        </h2>
+      </div>
 
-      {hasSave && (
-        <button aria-label="Continue saved career" onClick={onContinue} style={{ width: '100%', padding: '16px', background: 'var(--cream)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px', boxShadow: '0 4px 0px var(--charcoal)' }}>
-          CONTINUE CAREER
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <button
+          aria-label="Start a new career"
+          onClick={onNew}
+          style={{ width: '100%', padding: '16px', background: 'var(--accent)', color: '#0C0C10', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em' }}
+        >
+          NEW CAREER
         </button>
-      )}
 
-      <button aria-label="View Hall of Fame" onClick={onHall} style={{ width: '100%', padding: '14px', background: 'var(--surface)', color: 'var(--charcoal)', border: '3px solid var(--border)', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '8px' }}>
-        🏆 HALL OF FAME
-      </button>
+        {hasSave && (
+          <button
+            aria-label="Continue saved career"
+            onClick={onContinue}
+            style={{ width: '100%', padding: '16px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em' }}
+          >
+            CONTINUE
+          </button>
+        )}
 
-      <button aria-label="Open settings" onClick={onSettings} style={{ width: '100%', padding: '10px', background: 'transparent', color: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
-        ⚙️ Settings
-      </button>
+        <button
+          aria-label="View Hall of Fame"
+          onClick={onHall}
+          style={{ width: '100%', padding: '14px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          <Trophy size={16} />
+          Hall of Fame
+        </button>
+
+        <button
+          aria-label="Open settings"
+          onClick={onSettings}
+          style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', margin: '0 auto' }}
+        >
+          <Settings size={14} />
+          Settings
+        </button>
+      </div>
     </div>
   )
 }

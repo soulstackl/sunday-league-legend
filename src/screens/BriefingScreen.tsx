@@ -1,3 +1,4 @@
+import { Layers2, CheckCircle2 } from 'lucide-react'
 import { Card } from '../components/shared/Card'
 import { NpcAvatar } from '../components/shared/NpcAvatar'
 import { mulberry32 } from '../engine/rng'
@@ -34,60 +35,76 @@ export function BriefingScreen({ store, fixture, activeCards, onStartMatch }: Br
     ? cupRoundLabel(fixture.cupRound as 'quarter-final' | 'semi-final' | 'final')
     : `Week ${week} Fixture`
 
-  return (
-    <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-      <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '24px', color: 'var(--cream)', marginBottom: '12px' }}>Pre-Match Briefing</h2>
+  const isCup = fixture.kind === 'cup'
 
-      <Card style={{ background: 'var(--charcoal)', color: 'var(--cream)', border: '2px solid var(--border)', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--kit-amber)', fontWeight: 'bold' }}>{fixtureLabel}</span>
-          <span style={{ fontSize: '12px', background: fixture.kind === 'cup' ? 'var(--success)' : 'var(--danger)', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>
-            {fixture.kind === 'cup' ? 'CUP TIE' : 'MATCHDAY'}
+  return (
+    <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', background: 'var(--bg)' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '16px' }}>Pre-Match</h2>
+
+      {/* Fixture card */}
+      <Card style={{ marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>{fixtureLabel}</span>
+          <span style={{ fontSize: '10px', background: isCup ? 'var(--success-bg)' : 'var(--accent-bg)', color: isCup ? 'var(--success)' : 'var(--accent)', padding: '3px 8px', borderRadius: '20px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {isCup ? 'Cup Tie' : 'Matchday'}
           </span>
         </div>
-        <h3 style={{ fontFamily: 'var(--font-primary)', fontSize: '22px', marginBottom: '4px' }}>Dog &amp; Duck vs {fixture.opponent.name}</h3>
-        <p style={{ fontSize: '12px', opacity: 0.85 }}>Opponent Style: {fixture.opponent.style}</p>
-        <p style={{ fontSize: '11px', opacity: 0.7, marginTop: '4px', fontStyle: 'italic' }}>{fixture.opponent.notes}</p>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, marginBottom: '5px', color: 'var(--text)' }}>Dog &amp; Duck vs {fixture.opponent.name}</h3>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fixture.opponent.style}</p>
+        {fixture.opponent.notes && (
+          <p style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '4px', fontStyle: 'italic' }}>{fixture.opponent.notes}</p>
+        )}
       </Card>
 
-      <div style={{ display: 'flex', gap: '12px', background: 'var(--card-bg)', border: '2px solid var(--border)', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-        <NpcAvatar npcId="pete" size={50} />
+      {/* Pete's team talk */}
+      <div style={{ display: 'flex', gap: '12px', background: 'var(--card-bg)', border: '1px solid var(--border)', padding: '14px', borderRadius: '14px', marginBottom: '14px' }}>
+        <NpcAvatar npcId="pete" size={46} />
         <div>
-          <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--kit-amber-dark)' }}>Pete the Gaffer</div>
-          <p style={{ fontSize: '13px', fontStyle: 'italic', marginTop: '4px' }}>"{teamTalk}"</p>
+          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--accent)', marginBottom: '5px' }}>Pete the Gaffer</div>
+          <p style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--text-muted)', lineHeight: '1.5' }}>"{teamTalk}"</p>
         </div>
       </div>
 
+      {/* Active modifiers */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--cream)', marginBottom: '8px', textTransform: 'uppercase' }}>Active Match Modifiers:</div>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-faint)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active Modifiers</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {activeCards.map(c => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--cream)', border: '2px solid var(--border)', borderRadius: '6px', fontSize: '12px' }}>
-              <span style={{ fontWeight: 'bold' }}>🃏 {c.title}</span>
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: '3px solid var(--danger)', borderRadius: '10px', fontSize: '12px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: 'var(--text)' }}>
+                <Layers2 size={12} style={{ color: 'var(--text-muted)' }} />
+                {c.title}
+              </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--danger)' }}>{c.effects.split(',')[0]}</span>
             </div>
           ))}
           {store.contextModifiers.oppositionScouted && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--success)', color: '#fff', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>
-              <span>✓ Opposition Scouted</span>
-              <span style={{ fontSize: '11px' }}>+5% accuracy</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--success-bg)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '10px', fontSize: '12px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: 'var(--success)' }}>
+                <CheckCircle2 size={13} />
+                Opposition Scouted
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>+5% accuracy</span>
             </div>
           )}
           {store.contextModifiers.setPieceReady && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--success)', color: '#fff', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>
-              <span>✓ Set Pieces Sharp</span>
-              <span style={{ fontSize: '11px' }}>Boost on penalties/freekicks</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--success-bg)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '10px', fontSize: '12px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: 'var(--success)' }}>
+                <CheckCircle2 size={13} />
+                Set Pieces Sharp
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>Boost on dead balls</span>
             </div>
           )}
           {activeCards.length === 0 && !store.contextModifiers.oppositionScouted && !store.contextModifiers.setPieceReady && (
-            <div style={{ fontSize: '13px', color: 'var(--warm-grey)' }}>Standard conditions. No active modifiers.</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-faint)', padding: '8px 0' }}>Standard conditions. No active modifiers.</div>
           )}
         </div>
       </div>
 
       <button
         onClick={onStartMatch}
-        style={{ width: '100%', padding: '16px', background: 'var(--kit-amber)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 0px var(--charcoal)', marginTop: 'auto' }}
+        style={{ width: '100%', padding: '16px', background: 'var(--accent)', color: '#0C0C10', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', marginTop: 'auto' }}
       >
         PLAY MATCH MOMENTS
       </button>

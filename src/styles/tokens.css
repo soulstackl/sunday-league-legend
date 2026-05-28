@@ -1,20 +1,48 @@
 :root {
+  /* ─── Pitch / arena (used only by canvas drawing — do not repurpose) ─── */
   --pitch-green: #2d5a27;
   --pitch-line: #4a7c42;
   --mud-brown: #8B6914;
-  --kit-amber: #F59E0B;
-  --kit-amber-dark: #D97706;
-  --cream: #FEF3C7;
-  --off-white: #FAFAF8;
-  --charcoal: #1C1917;
-  --warm-grey: #78716C;
-  --danger: #DC2626;
-  --success: #16A34A;
-  --card-bg: #FFFFFF;
-  --surface: #F5F0E8;
-  --border: #E7E0D4;
 
-  --font-primary: Georgia, serif;
+  /* ─── Base surfaces ─── */
+  --bg: #0C0C10;
+  --charcoal: #0C0C10;        /* kept for screen-background compat */
+  --card-bg: #141419;          /* primary card / panel surface */
+  --surface: #1C1C24;          /* raised chips, inset panels, selected cells */
+  --surface-raised: #22222E;   /* elevated — selected cards, modals */
+
+  /* ─── Borders ─── */
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* ─── Text ─── */
+  --cream: #EEECF6;            /* primary text (cool near-white) */
+  --off-white: #EEECF6;
+  --text: #EEECF6;
+  --warm-grey: #8886A0;        /* secondary / muted text */
+  --text-muted: #8886A0;
+  --text-faint: #4A4A60;       /* tertiary — placeholders, disabled */
+
+  /* ─── Accent — refined warm gold ─── */
+  --kit-amber: #F0A830;
+  --kit-amber-dark: #C07A10;
+  --accent: #F0A830;
+  --accent-dark: #C07A10;
+  --accent-bg: rgba(240, 168, 48, 0.10);
+  --accent-bg-strong: rgba(240, 168, 48, 0.20);
+
+  /* ─── Status ─── */
+  --success: #22C55E;
+  --success-bg: rgba(34, 197, 94, 0.10);
+  --danger: #F43F5E;
+  --danger-bg: rgba(244, 63, 94, 0.10);
+  --purple: #A78BFA;
+  --purple-bg: rgba(167, 139, 250, 0.10);
+
+  /* ─── Typography ─── */
+  --font-display: 'Space Grotesk', 'Outfit', sans-serif;
+  --font-primary: 'Space Grotesk', 'Outfit', sans-serif; /* kept for compat */
   --font-ui: 'Outfit', -apple-system, sans-serif;
   --font-mono: 'Courier Prime', 'Courier New', monospace;
 }
@@ -25,30 +53,26 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  outline-color: var(--kit-amber);
+  outline-color: var(--accent);
 }
 
 body {
-  background-color: var(--charcoal);
-  color: var(--charcoal);
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--font-ui);
   overflow-x: hidden;
   min-height: 100vh;
-  background-image:
-    linear-gradient(rgba(28, 25, 23, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(28, 25, 23, 0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--warm-grey);
-  border-radius: 3px;
+  background: var(--surface-raised);
+  border-radius: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

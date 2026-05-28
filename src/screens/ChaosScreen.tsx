@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Layers2, CheckCircle2 } from 'lucide-react'
 import { Badge } from '../components/shared/Badge'
 import { CHAOS_CARDS } from '../data/chaos-cards'
 import { cupRoundLabel } from '../data/cup'
@@ -13,7 +14,6 @@ interface ChaosScreenProps {
 }
 
 export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
-  // Cup ties draw 3 cards; rival fixtures draw 3; everything else 2.
   const drawCount = useMemo(() => {
     if (fixture.kind === 'cup') return 3
     if (fixture.opponent.id === 'anchor-athletic') return 3
@@ -61,56 +61,62 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
     : `vs ${fixture.opponent.name}`
 
   return (
-    <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '22px', color: 'var(--cream)', marginBottom: '4px', textTransform: 'uppercase' }}>Matchday Chaos</h2>
-      <div style={{ fontSize: '11px', color: 'var(--kit-amber)', marginBottom: '16px', fontFamily: 'var(--font-mono)' }}>{subTitle}</div>
+    <div style={{ padding: '24px 20px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Matchday Chaos</h2>
+      <div style={{ fontSize: '11px', color: 'var(--accent)', marginBottom: '20px', fontFamily: 'var(--font-mono)' }}>{subTitle}</div>
 
       <div
         onClick={() => !flipped && setFlipped(true)}
         style={{ width: '100%', maxWidth: '300px', minHeight: '380px', perspective: '1000px', cursor: flipped ? 'default' : 'pointer', marginBottom: '24px' }}
       >
-        <div style={{ width: '100%', height: '100%', transition: 'transform 0.6s', transformStyle: 'preserve-3d', position: 'relative', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
-          <div style={{ position: 'absolute', width: '100%', height: '380px', backfaceVisibility: 'hidden', background: 'var(--charcoal)', border: '6px solid var(--kit-amber)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
-            <Badge size={80} />
-            <div style={{ color: 'var(--cream)', marginTop: '16px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '14px' }}>
+        <div style={{ width: '100%', height: '100%', transition: 'transform 0.55s cubic-bezier(0.4,0,0.2,1)', transformStyle: 'preserve-3d', position: 'relative', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+          {/* Card back */}
+          <div style={{ position: 'absolute', width: '100%', height: '380px', backfaceVisibility: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--accent-bg-strong)', borderRadius: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
+            <Badge size={72} />
+            <div style={{ color: 'var(--text)', marginTop: '20px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '13px' }}>
               Tap to Reveal
             </div>
-            <div style={{ color: 'var(--kit-amber)', marginTop: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Card {currentIndex + 1} of {cards.length}</div>
+            <div style={{ color: 'var(--accent)', marginTop: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Card {currentIndex + 1} of {cards.length}</div>
           </div>
 
-          <div style={{ position: 'absolute', width: '100%', backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', background: 'var(--cream)', border: '4px solid var(--charcoal)', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 10px 20px rgba(0,0,0,0.3)', color: 'var(--charcoal)' }}>
+          {/* Card face */}
+          <div style={{ position: 'absolute', width: '100%', minHeight: '380px', backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '20px', padding: '20px', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 40px rgba(0,0,0,0.5)', color: 'var(--text)' }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '10px', background: 'var(--charcoal)', color: 'var(--cream)', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>{current.type}</span>
-                <span style={{ fontSize: '12px' }}>🃏 Card {currentIndex + 1}/{cards.length}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '10px', background: 'var(--surface-raised)', color: 'var(--text-muted)', padding: '3px 10px', borderRadius: '20px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{current.type}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                  <Layers2 size={12} />
+                  {currentIndex + 1}/{cards.length}
+                </span>
               </div>
-              <h3 style={{ fontFamily: 'var(--font-primary)', fontSize: '22px', margin: '8px 0', borderBottom: '2px solid var(--charcoal)', paddingBottom: '4px' }}>{current.title}</h3>
-              <p style={{ fontSize: '13px', fontStyle: 'italic', lineHeight: '1.4', marginBottom: '16px' }}>"{current.desc}"</p>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, margin: '0 0 8px', color: 'var(--text)' }}>{current.title}</h3>
+              <p style={{ fontSize: '13px', fontStyle: 'italic', lineHeight: '1.5', marginBottom: '16px', color: 'var(--text-muted)' }}>"{current.desc}"</p>
             </div>
             <div>
-              <div style={{ background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '6px', marginBottom: '12px', borderLeft: '3px solid var(--danger)' }}>
-                <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Match Effects:</div>
-                <div style={{ fontSize: '13px', fontFamily: 'var(--font-mono)' }}>{current.effects}</div>
+              <div style={{ background: 'var(--surface-raised)', padding: '10px 12px', borderRadius: '10px', marginBottom: '12px', borderLeft: '3px solid var(--danger)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--danger)', letterSpacing: '0.06em', marginBottom: '4px' }}>Match Effects</div>
+                <div style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{current.effects}</div>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--warm-grey)', marginBottom: '8px' }}>
-                <strong>Counterplay Tip:</strong> {current.tip}
+              <div style={{ fontSize: '11px', color: 'var(--text-faint)', marginBottom: '10px', lineHeight: '1.4' }}>
+                <strong style={{ color: 'var(--text-muted)' }}>Tip:</strong> {current.tip}
               </div>
               {current.choices && !choiceMade && flipped && (
-                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {current.choices.map((c, i) => (
                     <button key={i} onClick={() => {
                       setChoiceMade(true)
                       setChoiceOutcome(c.outcome)
                       setAppliedChoiceEffects(prev => [...prev, c.effect])
-                    }} style={{ padding: '8px 12px', background: 'var(--charcoal)', color: 'var(--cream)', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold' }}>
+                    }} style={{ padding: '10px 14px', background: 'var(--card-bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontWeight: 600, fontFamily: 'var(--font-ui)' }}>
                       {c.text}
                     </button>
                   ))}
                 </div>
               )}
               {current.choices && choiceMade && (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--success)', fontStyle: 'italic' }}>
-                  ✓ {choiceOutcome ?? 'Choice made.'}
+                <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={14} />
+                  {choiceOutcome ?? 'Choice made.'}
                 </div>
               )}
             </div>
@@ -121,9 +127,16 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
       <button
         disabled={!!proceedDisabled}
         onClick={nextCard}
-        style={{ width: '100%', padding: '16px', background: proceedDisabled ? 'var(--warm-grey)' : 'var(--kit-amber)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: proceedDisabled ? 'not-allowed' : 'pointer', boxShadow: '0 4px 0px var(--charcoal)' }}
+        style={{
+          width: '100%', padding: '16px',
+          background: proceedDisabled ? 'var(--surface-raised)' : 'var(--accent)',
+          color: proceedDisabled ? 'var(--text-faint)' : '#0C0C10',
+          border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
+          cursor: proceedDisabled ? 'not-allowed' : 'pointer',
+          letterSpacing: '0.04em',
+        }}
       >
-        {currentIndex < cards.length - 1 ? 'NEXT CARD' : (fixture.kind === 'cup' ? 'TAKE THE PITCH' : 'KICK OFF MATCH')}
+        {currentIndex < cards.length - 1 ? 'NEXT CARD' : (fixture.kind === 'cup' ? 'TAKE THE PITCH' : 'KICK OFF')}
       </button>
     </div>
   )

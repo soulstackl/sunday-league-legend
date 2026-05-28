@@ -97,47 +97,66 @@ export function PostMatchScreen({ store, matchReport, onContinue }: PostMatchScr
       ? '"Honest result on the day," said Pete the Gaffer. "Could have nicked it, could have lost it. We move on."'
       : '"Absolute shambles," said Pete the Gaffer. "Training is mandatory. Gary is excused."'
 
+  const resultAccent = won ? '#22C55E' : draw ? '#F0A830' : '#F43F5E'
+
   return (
-    <ScreenContainer style={{ background: '#e8e4d9', padding: '24px' }}>
-      <div style={{ border: '2px solid #333', background: '#fffef0', padding: '20px', boxShadow: '5px 5px 0px rgba(0,0,0,0.1)', minHeight: '85%', display: 'flex', flexDirection: 'column', fontFamily: 'serif', color: '#111' }}>
-        <div style={{ textAlign: 'center', borderBottom: '4px double #333', paddingBottom: '10px', marginBottom: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '2px' }}>THE SUNDAY LEAGUE WEEKLY</div>
-          <div style={{ fontSize: '10px' }}>EST. 1982 | PRICE: 50P | {new Date().toLocaleDateString('en-GB')}</div>
+    <ScreenContainer style={{ background: 'var(--bg)', padding: '20px' }}>
+      {/* Newspaper masthead */}
+      <div style={{ background: '#F5F0E6', borderRadius: '16px', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+        {/* Header band */}
+        <div style={{ borderBottom: '3px double #1a1a1a', padding: '12px 16px', textAlign: 'center', background: '#FFFDF5' }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#1a1a1a' }}>The Sunday League Weekly</div>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: '10px', color: '#555', marginTop: '2px' }}>
+            Est. 1982 · Price 50p · {new Date().toLocaleDateString('en-GB')}
+          </div>
         </div>
 
-        <h1 style={{ fontSize: '24px', lineHeight: '1.1', marginBottom: '16px', fontWeight: 900, textAlign: 'center' }}>{headline}</h1>
+        {/* Content */}
+        <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', background: '#FFFDF5', color: '#1a1a1a' }}>
+          {/* Result bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '12px', background: resultAccent, borderRadius: '8px', marginBottom: '14px' }}>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '42px', fontWeight: 700, color: won ? '#fff' : (draw ? '#0C0C10' : '#fff'), lineHeight: 1 }}>{ourGoals}</span>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 700, color: won ? 'rgba(255,255,255,0.7)' : (draw ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)'), lineHeight: 1 }}>:</span>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '42px', fontWeight: 700, color: won ? '#fff' : (draw ? '#0C0C10' : '#fff'), lineHeight: 1 }}>{theirGoals}</span>
+          </div>
 
-        <div style={{ display: 'flex', gap: '16px', flex: 1, flexDirection: wide ? 'row' : 'column' }}>
-          <div style={{ flex: 2 }}>
-            <div style={{ fontSize: '56px', fontWeight: 'bold', textAlign: 'center', border: '2px solid #333', margin: '10px 0', background: '#fff' }}>
-              {ourGoals} : {theirGoals}
-            </div>
-            <p style={{ fontSize: '14px', lineHeight: '1.4', color: '#333', fontStyle: 'italic', marginBottom: '16px' }}>{sideQuote}</p>
-            <div>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid #333', marginBottom: '8px' }}>Player Match Rating</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{rating}/10</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{store.player.name}</div>
+          {/* Headline */}
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: wide ? '22px' : '18px', lineHeight: '1.2', marginBottom: '12px', fontWeight: 900, textAlign: 'center', color: '#1a1a1a' }}>{headline}</h1>
+
+          <div style={{ display: 'flex', gap: '16px', flex: 1, flexDirection: wide ? 'row' : 'column' }}>
+            <div style={{ flex: 2 }}>
+              <p style={{ fontFamily: 'Georgia, serif', fontSize: '13px', lineHeight: '1.5', color: '#333', fontStyle: 'italic', marginBottom: '14px' }}>{sideQuote}</p>
+
+              <div style={{ borderTop: '1px solid #ccc', paddingTop: '12px' }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: '6px' }}>Player Rating</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '36px', fontWeight: 700, color: '#1a1a1a', lineHeight: 1 }}>{rating}<span style={{ fontSize: '16px', color: '#888' }}>/10</span></div>
+                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: 700, color: '#1a1a1a' }}>{store.player.name}</div>
+                </div>
               </div>
             </div>
-          </div>
-          <div style={{ flex: 1, borderLeft: wide ? '1px solid #ccc' : 'none', borderTop: wide ? 'none' : '1px solid #ccc', paddingLeft: wide ? '12px' : '0', paddingTop: wide ? '0' : '12px', fontSize: '13px' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Match Statistics</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Shots (Goals)</span><span>{matchReport.stats?.shots ?? 0} ({matchReport.stats?.goals ?? 0})</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Pass Completion</span><span>{matchReport.stats?.passes ? Math.round(((matchReport.stats.passSuccess ?? 0) / matchReport.stats.passes) * 100) : 0}%</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Tackles Won</span><span>{matchReport.stats?.tackleSuccess ?? 0}/{matchReport.stats?.tackles ?? 0}</span></div>
+
+            <div style={{ flex: 1, borderLeft: wide ? '1px solid #ddd' : 'none', borderTop: wide ? 'none' : '1px solid #ddd', paddingLeft: wide ? '14px' : '0', paddingTop: wide ? '0' : '12px', fontSize: '12px' }}>
+              <div style={{ fontFamily: 'Georgia, serif', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.08em', color: '#555' }}>Stats</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontFamily: "'Courier Prime', monospace", fontSize: '11px', color: '#333' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Shots (Goals)</span><span style={{ fontWeight: 700 }}>{matchReport.stats?.shots ?? 0} ({matchReport.stats?.goals ?? 0})</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Pass Completion</span><span style={{ fontWeight: 700 }}>{matchReport.stats?.passes ? Math.round(((matchReport.stats.passSuccess ?? 0) / matchReport.stats.passes) * 100) : 0}%</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Tackles Won</span><span style={{ fontWeight: 700 }}>{matchReport.stats?.tackleSuccess ?? 0}/{matchReport.stats?.tackles ?? 0}</span></div>
+              </div>
+
+              <div style={{ fontFamily: 'Georgia, serif', fontWeight: 700, marginTop: '14px', marginBottom: '6px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.08em', color: '#555' }}>Dressing Room</div>
+              <p style={{ fontFamily: 'Georgia, serif', fontSize: '12px', lineHeight: '1.4', marginBottom: '6px', color: '#444' }}>"Best I have seen him play in weeks," noted Gav Two Yards.</p>
+              <p style={{ fontFamily: 'Georgia, serif', fontSize: '12px', lineHeight: '1.4', color: '#444' }}>"Ref was a joke, but the lad pulled us through," added Big Taz.</p>
             </div>
-
-            <div style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', textTransform: 'uppercase' }}>Squad Banter</div>
-            <p style={{ marginBottom: '8px' }}>"Best I have seen him play in weeks," noted Gav Two Yards. "Even if he did not pass to me once."</p>
-            <p>"Ref was a joke, but the lad pulled us through," added Big Taz.</p>
           </div>
-        </div>
 
-        <button className="sll-btn" onClick={onContinue} style={{ marginTop: '24px', background: '#333', color: '#fff', border: 'none', borderRadius: '0', padding: '12px' }}>
-          NEXT EDITION
-        </button>
+          <button
+            onClick={onContinue}
+            style={{ marginTop: '18px', width: '100%', padding: '12px', background: '#1a1a1a', color: '#F5F0E6', border: 'none', borderRadius: '6px', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '14px', cursor: 'pointer', letterSpacing: '0.04em' }}
+          >
+            NEXT EDITION
+          </button>
+        </div>
       </div>
     </ScreenContainer>
   )

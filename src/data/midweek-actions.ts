@@ -4,7 +4,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'train',
     name: 'Train with the lads',
-    icon: '⚽',
+    icon: 'Activity',
     description: 'Turn up to training. Pete notices. A random core stat sharpens.',
     effects: { statBoost: 'random', managerTrust: 3, fatigue: 5 },
     groupChatTrigger: 'training-banter',
@@ -12,7 +12,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'rest',
     name: 'Take it easy',
-    icon: '🛋️',
+    icon: 'Bed',
     description: 'Rest up. Fitness first.',
     effects: { fatigue: -15, fitness: 5, managerTrust: -2 },
     groupChatTrigger: 'rest-day-message',
@@ -20,7 +20,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'gym',
     name: 'Hit the gym',
-    icon: '💪',
+    icon: 'Dumbbell',
     description: 'Solo session. Pick your focus.',
     effects: { statBoostOptions: ['engine', 'graft', 'pace'], fatigue: 8, fitness: 3 },
     groupChatTrigger: null,
@@ -29,7 +29,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'pub',
     name: 'Dog & Duck session',
-    icon: '🍺',
+    icon: 'Beer',
     description: 'Team bonding. Pub style. High risk, high reward.',
     effects: { teamChemistry: 10, vibes: 5, fatigue: 10, injuryRisk: 5, hangoverRisk: true },
     groupChatTrigger: 'pub-night-chaos',
@@ -37,7 +37,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'overtime',
     name: 'Work overtime',
-    icon: '💼',
+    icon: 'Briefcase',
     description: "Money's tight. Skip training, extra shift.",
     effects: { managerTrust: -5, fatigue: 8 },
     groupChatTrigger: 'overtime-excuse',
@@ -45,7 +45,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'watchopposition',
     name: 'Watch the opposition',
-    icon: '👁️',
+    icon: 'Eye',
     description: "Scout Sunday's opponents. Sharper aim in the next match.",
     effects: { contextModifier: 'opposition-scouted', confidence: 5 },
     groupChatTrigger: null,
@@ -53,7 +53,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'patchrelationship',
     name: 'Patch things up',
-    icon: '🤝',
+    icon: 'Heart',
     description: 'Buy a team-mate a pint and sort things out.',
     npcTarget: true,
     effects: { targetRelationship: 15, vibes: 3 },
@@ -62,7 +62,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
   {
     id: 'setpieces',
     name: 'Practise set pieces',
-    icon: '🎯',
+    icon: 'Target',
     description: 'Extra work on dead balls. Next match: sharper penalties and free kicks.',
     effects: { contextModifier: 'set-piece-ready', strike: 1 },
     groupChatTrigger: null,

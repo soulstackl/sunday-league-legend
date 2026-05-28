@@ -16,23 +16,26 @@ export function TableScreen({ store, onContinue, onBack, canAdvance }: TableScre
 
   return (
     <ScreenContainer style={{ overflowY: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '24px', color: 'var(--cream)' }}>{TIER_NAMES[store.season.tier]}</h2>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--cream)', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>Back</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>{TIER_NAMES[store.season.tier]}</h2>
+          <div style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>Season {store.season.number} · Week {store.season.week}</div>
+        </div>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '6px', fontFamily: 'var(--font-ui)' }}>Back</button>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', border: '3px solid var(--charcoal)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
           <thead>
-            <tr style={{ background: 'var(--charcoal)', color: 'var(--cream)' }}>
-              <th style={{ padding: '6px 4px', textAlign: 'left' }}>#</th>
-              <th style={{ padding: '6px 4px', textAlign: 'left' }}>CLUB</th>
-              <th style={{ padding: '6px 4px', textAlign: 'center' }}>P</th>
-              <th style={{ padding: '6px 4px', textAlign: 'center' }}>W</th>
-              <th style={{ padding: '6px 4px', textAlign: 'center' }}>D</th>
-              <th style={{ padding: '6px 4px', textAlign: 'center' }}>L</th>
-              <th style={{ padding: '6px 4px', textAlign: 'center' }}>GD</th>
-              <th style={{ padding: '6px 4px', textAlign: 'center' }}>PTS</th>
+            <tr style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', letterSpacing: '0.06em', fontWeight: 700 }}>#</th>
+              <th style={{ padding: '8px 6px', textAlign: 'left', fontSize: '10px', letterSpacing: '0.06em', fontWeight: 700 }}>CLUB</th>
+              <th style={{ padding: '8px 6px', textAlign: 'center', fontSize: '10px' }}>P</th>
+              <th style={{ padding: '8px 6px', textAlign: 'center', fontSize: '10px' }}>W</th>
+              <th style={{ padding: '8px 6px', textAlign: 'center', fontSize: '10px' }}>D</th>
+              <th style={{ padding: '8px 6px', textAlign: 'center', fontSize: '10px' }}>L</th>
+              <th style={{ padding: '8px 6px', textAlign: 'center', fontSize: '10px' }}>GD</th>
+              <th style={{ padding: '8px 10px', textAlign: 'center', fontSize: '10px', fontWeight: 700 }}>PTS</th>
             </tr>
           </thead>
           <tbody>
@@ -40,17 +43,20 @@ export function TableScreen({ store, onContinue, onBack, canAdvance }: TableScre
               const pos = i + 1
               const promoteZone = pos <= 2 && store.season.tier > 1
               const relegateZone = pos >= totalTeams - 1 && store.season.tier < 3
-              const bg = team.isUs ? 'var(--cream)' : (promoteZone ? 'rgba(22,163,74,0.08)' : (relegateZone ? 'rgba(220,38,38,0.06)' : 'none'))
+              let rowBg = 'transparent'
+              if (team.isUs) rowBg = 'var(--accent-bg)'
+              else if (promoteZone) rowBg = 'var(--success-bg)'
+              else if (relegateZone) rowBg = 'var(--danger-bg)'
               return (
-                <tr key={team.id} style={{ background: bg, borderBottom: '1px solid var(--border)', fontWeight: team.isUs ? 'bold' : 'normal' }}>
-                  <td style={{ padding: '6px 4px', color: promoteZone ? 'var(--success)' : (relegateZone ? 'var(--danger)' : 'inherit') }}>{pos}</td>
-                  <td style={{ padding: '6px 4px' }}>{team.name}</td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{team.played}</td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{team.won}</td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{team.drawn}</td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{team.lost}</td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{team.goalDifference > 0 ? '+' : ''}{team.goalDifference}</td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{team.points}</td>
+                <tr key={team.id} style={{ background: rowBg, borderBottom: '1px solid var(--border-subtle)', fontWeight: team.isUs ? 700 : 400 }}>
+                  <td style={{ padding: '7px 10px', color: promoteZone ? 'var(--success)' : (relegateZone ? 'var(--danger)' : 'var(--text-faint)'), fontWeight: 700, fontSize: '11px' }}>{pos}</td>
+                  <td style={{ padding: '7px 6px', color: team.isUs ? 'var(--accent)' : 'var(--text)' }}>{team.name}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{team.played}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{team.won}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{team.drawn}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{team.lost}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{team.goalDifference > 0 ? '+' : ''}{team.goalDifference}</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'center', color: 'var(--text)', fontWeight: 700 }}>{team.points}</td>
                 </tr>
               )
             })}
@@ -58,15 +64,29 @@ export function TableScreen({ store, onContinue, onBack, canAdvance }: TableScre
         </table>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', border: '2px solid var(--border)', padding: '8px 10px', borderRadius: '6px', marginBottom: '16px', fontSize: '11px', color: 'var(--charcoal)' }}>
-        <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'rgba(22,163,74,0.3)', marginRight: '6px', verticalAlign: 'middle' }} />Promotion zone
-        <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'rgba(220,38,38,0.3)', margin: '0 6px 0 12px', verticalAlign: 'middle' }} />Relegation zone
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'var(--success-bg)', borderRadius: '2px', border: '1px solid rgba(34,197,94,0.3)' }} />
+          Promotion zone
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'var(--danger-bg)', borderRadius: '2px', border: '1px solid rgba(244,63,94,0.3)' }} />
+          Relegation zone
+        </span>
       </div>
 
       <button
         disabled={!canAdvance}
         onClick={onContinue}
-        style={{ width: '100%', padding: '16px', background: canAdvance ? 'var(--kit-amber)' : 'var(--warm-grey)', color: 'var(--charcoal)', border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: canAdvance ? 'pointer' : 'not-allowed', boxShadow: '0 4px 0px var(--charcoal)', marginTop: 'auto' }}
+        style={{
+          width: '100%', padding: '16px',
+          background: canAdvance ? 'var(--accent)' : 'var(--surface-raised)',
+          color: canAdvance ? '#0C0C10' : 'var(--text-faint)',
+          border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
+          cursor: canAdvance ? 'pointer' : 'not-allowed',
+          letterSpacing: '0.04em', marginTop: 'auto',
+        }}
       >
         {canAdvance ? 'NEXT WEEK' : 'CLOSE TABLE'}
       </button>

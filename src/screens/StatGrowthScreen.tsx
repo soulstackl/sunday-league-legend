@@ -26,9 +26,9 @@ export function StatGrowthScreen({ store, options, onConfirm }: Props) {
 
   return (
     <ScreenContainer style={{ textAlign: 'center' }}>
-      <Badge size={80} />
-      <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '24px', color: 'var(--cream)', margin: '12px 0 6px' }}>Pre-Season Development</h2>
-      <p style={{ color: 'var(--cream)', fontSize: '13px', opacity: 0.85, marginBottom: '20px' }}>
+      <Badge size={72} />
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', margin: '14px 0 4px' }}>Pre-Season Growth</h2>
+      <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
         Another season behind you. Pick where you have grown.
       </p>
 
@@ -40,9 +40,10 @@ export function StatGrowthScreen({ store, options, onConfirm }: Props) {
             <Card
               key={stat}
               style={{
-                background: 'var(--card-bg)',
-                border: isSel ? '3px solid var(--kit-amber)' : '2px solid var(--border)',
+                background: isSel ? 'var(--surface-raised)' : 'var(--card-bg)',
+                border: isSel ? '1px solid var(--accent)' : '1px solid var(--border)',
                 cursor: 'pointer',
+                transition: 'border-color 0.15s, background 0.15s',
               }}
             >
               <button
@@ -53,11 +54,12 @@ export function StatGrowthScreen({ store, options, onConfirm }: Props) {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '16px', textTransform: 'uppercase' }}>{stat}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--warm-grey)' }}>{STAT_DESCRIPTIONS[stat]}</div>
+                    <div style={{ fontWeight: 700, fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.04em', color: isSel ? 'var(--accent)' : 'var(--text)' }}>{stat}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{STAT_DESCRIPTIONS[stat]}</div>
                   </div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 'bold' }}>
-                    {current} <span style={{ color: 'var(--success)' }}>+1</span>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>
+                    <span style={{ fontSize: '18px' }}>{current}</span>
+                    <span style={{ color: 'var(--success)', fontSize: '13px' }}> +1</span>
                   </div>
                 </div>
               </button>
@@ -71,10 +73,11 @@ export function StatGrowthScreen({ store, options, onConfirm }: Props) {
         onClick={() => selected && onConfirm(selected)}
         style={{
           width: '100%', padding: '16px',
-          background: selected ? 'var(--kit-amber)' : 'var(--warm-grey)',
-          color: 'var(--charcoal)',
-          border: '3px solid var(--charcoal)', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold',
-          cursor: selected ? 'pointer' : 'not-allowed', boxShadow: '0 4px 0px var(--charcoal)', marginTop: 'auto',
+          background: selected ? 'var(--accent)' : 'var(--surface-raised)',
+          color: selected ? '#0C0C10' : 'var(--text-faint)',
+          border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
+          cursor: selected ? 'pointer' : 'not-allowed',
+          letterSpacing: '0.04em', marginTop: '24px',
         }}
       >
         CONFIRM &amp; START NEW SEASON
