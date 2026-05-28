@@ -1,22 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import type { SaveState, ChaosCard, MomentResult, MatchStats } from '../../types/game'
-import { OPPONENTS } from '../../data/opponents'
+import type { Fixture } from '../../engine/schedule'
 import { ScreenContainer } from '../../components/shared/ScreenContainer'
 import { getChaosModifiers } from '../../engine/chaos'
 import { AudioManager } from '../../audio/AudioManager'
 
-export interface ArenaMatchStats extends MatchStats {
-  shots: number
-  goals: number
-  passes: number
-  passSuccess: number
-  tackles: number
-  tackleSuccess: number
-}
+export type ArenaMatchStats = MatchStats
 
 interface ArenaScreenProps {
   store: SaveState
+  fixture: Fixture
   activeCards: ChaosCard[]
   onCompleteMatch: (results: MomentResult[], stats: ArenaMatchStats) => void
 }
@@ -31,36 +25,37 @@ const statBoost = (stat: number, neutral = 10): number =>
 const MOMENT_INFO: Record<string, { title: string; instruction: string; stat: string; statLabel: string }> = {
   shot:     { title: 'OPEN PLAY STRIKE',    instruction: 'Drag back to aim and set power. Release to unleash.',        stat: 'strike', statLabel: 'STRIKE' },
   pass:     { title: 'CLINICAL PASS',       instruction: 'Find your teammate. Drag from ball to target.',              stat: 'pass',   statLabel: 'PASS' },
-  touch:    { title: 'FIRST TOUCH',         instruction: "Incoming! Cushion it — match the ball's speed.",             stat: 'touch',  statLabel: 'TOUCH' },
+  touch:    { title: 'FIRST TOUCH',         instruction: "Incoming! Cushion it , match the ball's speed.",             stat: 'touch',  statLabel: 'TOUCH' },
   tackle:   { title: 'LAST-MAN TACKLE',     instruction: 'Wait for him. Drag at the attacker.',                        stat: 'engine', statLabel: 'ENGINE' },
-  header:   { title: 'AERIAL THREAT',       instruction: 'Wait for the drop — drag up to power it home.',             stat: 'head',   statLabel: 'HEAD' },
+  header:   { title: 'AERIAL THREAT',       instruction: 'Wait for the drop , drag up to power it home.',             stat: 'head',   statLabel: 'HEAD' },
   penalty:  { title: 'SPOT KICK',           instruction: 'Pick a corner. Slingshot to shoot.',                        stat: 'strike', statLabel: 'STRIKE' },
   freekick: { title: 'DEAD-BALL SPECIAL',   instruction: 'Slingshot the ball over the wall and into the corner.',     stat: 'strike', statLabel: 'STRIKE' },
   corner:   { title: 'IN THE MIXER',        instruction: "Whip it onto a teammate's head.",                           stat: 'pass',   statLabel: 'PASS' },
 }
 
 const GOAL_LINES: Record<string, string[]> = {
-  topcorner: ['TOP BINS! Absolute screamer!', 'Top corner — keeper had no chance!', 'Postage stamp! What a finish!'],
-  chip:      ['Chipped him! Audacious!', 'Dinked over the keeper — class!', 'Coolly chipped — pick that out!'],
+  topcorner: ['TOP BINS! Absolute screamer!', 'Top corner , keeper had no chance!', 'Postage stamp! What a finish!'],
+  chip:      ['Chipped him! Audacious!', 'Dinked over the keeper , class!', 'Coolly chipped , pick that out!'],
   tucked:    ['Tucked away! Cold-blooded.', 'Slotted neatly inside the post.', 'Side-footed home like a pro.'],
-  rising:    ['Rising rocket — back of the net!', 'Lashed it home off the underside!', 'Power finish! Get in!'],
-  standard:  ['Pick that out!', 'Get in! Back of the net.', 'Goal — well done lad.', 'Worldie. Pure worldie.'],
+  rising:    ['Rising rocket , back of the net!', 'Lashed it home off the underside!', 'Power finish! Get in!'],
+  standard:  ['Pick that out!', 'Get in! Back of the net.', 'Goal , well done lad.', 'Worldie. Pure worldie.'],
 }
 
 const NEARMISS_LINES = [
   'Inches wide of the post!',
-  "Crowd ooh'd — that whistled past the post!",
-  "So close — keeper's heart skipped a beat.",
+  "Crowd ooh'd , that whistled past the post!",
+  "So close , keeper's heart skipped a beat.",
   'Curled just over the bar!',
 ]
 
 // --------------------------------------------------------------------------------------
 
-export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreenProps) {
-  const opponent = OPPONENTS[(store.season.week - 1) % OPPONENTS.length]
+export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: ArenaScreenProps) {
+  const opponent = fixture.opponent
   const playerStats = store.player.stats
+  const ctx = store.contextModifiers
 
-  // Opponent's keeper profile — better keepers on harder teams.
+  // Opponent's keeper profile , better keepers on harder teams.
   // Royal Oak Rovers explicitly note "Their keeper is exceptional".
   const keeperProfile = useMemo(() => {
     const d = opponent.difficulty || 5
@@ -82,7 +77,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
 
   const screenShakeRef = useRef<number>(0)
 
-  // Pre-moment "READY" overlay — prevents premature input, builds anticipation
+  // Pre-moment "READY" overlay , prevents premature input, builds anticipation
   const [readyPhase, setReadyPhase] = useState('intro')
   const readyPhaseRef = useRef('intro')
   useEffect(() => { readyPhaseRef.current = readyPhase }, [readyPhase])
@@ -107,14 +102,16 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
   const weather = activeCards.find(c => c.type === 'Weather')?.id || 'clear'
   const pitch = activeCards.find(c => c.type === 'Pitch')?.id || 'clear'
   const weatherParticles = useRef<any[]>([])
-  // Stable random seed for the crowd — fixed on mount, not recalculated on every render
+  // Stable random seed for the crowd , fixed on mount, not recalculated on every render
   const [crowdSeed] = useState(() => Math.floor(Math.random() * 1000))
   const crowdSeedRef = useRef(crowdSeed)
-  // Ball trail (positions captured per frame) — gives motion a sense of curve/spin
+  // Ball trail (positions captured per frame) , gives motion a sense of curve/spin
   const ballTrail = useRef<{ x: number; y: number; z: number }[]>([])
 
   // Balanced 4-moment sequence per match: 1 open-play strike, 1 pass/touch, 1 defensive moment, 1 wildcard.
   // Fixed on mount so consecutive matches feel different and all 8 moment types eventually appear.
+  // Cup ties go to five moments so the stakes feel higher. League fixtures stay at four.
+  const totalMoments = fixture.kind === 'cup' ? 5 : 4
   const [matchMoments] = useState<string[]>(() => {
     const pickOne = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
     const seq = [
@@ -123,12 +120,12 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       pickOne(['tackle', 'touch']),
       pickOne(['penalty', 'freekick', 'shot', 'corner']),
     ]
-    // Avoid duplicates within a single match by swapping in the underused types
+    if (fixture.kind === 'cup') seq.push(pickOne(['shot', 'header', 'freekick']))
     const pool = ['shot', 'pass', 'touch', 'tackle', 'header', 'penalty', 'freekick', 'corner']
     const seen = new Set<string>()
     return seq.map(m => {
       if (!seen.has(m)) { seen.add(m); return m }
-      const alt = pool.find(p => !seen.has(p)) || m
+      const alt = pool.find(p => !seen.has(p)) ?? m
       seen.add(alt); return alt
     })
   })
@@ -334,12 +331,12 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       AudioManager.playOoh()
     } else if (b.hitPost) {
       outcome = 'WOODWORK'
-      details = 'Off the post! Agony — could\'ve been a worldie.'
+      details = 'Off the post! Agony , could\'ve been a worldie.'
       AudioManager.playOoh()
     } else if (b.saved) {
       outcome = 'SAVED'
       if (b.struck && b.struck.basePower > 0.85) details = 'Their keeper somehow gets a glove on it. Great save.'
-      else if (opponent.id === 'royal-oak-rovers') details = "Their keeper's a brick wall today — held easily."
+      else if (opponent.id === 'royal-oak-rovers') details = "Their keeper's a brick wall today , held easily."
       else details = 'Keeper holds it. Decent shot, better save.'
       AudioManager.playGroan()
     } else if (b.intercepted && !manualOutcome) {
@@ -350,7 +347,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       outcome = 'SUCCESS'
       const who = b.reachedTeammate.name || 'your man'
       details = activeMomentType === 'corner'
-        ? `Whipped in beautifully — ${who} rose highest!`
+        ? `Whipped in beautifully , ${who} rose highest!`
         : `Spot on. Right to ${who}'s feet.`
       AudioManager.playPing()
       setMatchStats(s => ({ ...s, passSuccess: s.passSuccess + 1 }))
@@ -379,7 +376,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       setMatchStats(s => ({ ...s, tackleSuccess: s.tackleSuccess + 1 }))
     }
 
-    // Outcome scoring — goals & passes full credit, woodwork/near-miss partial credit
+    // Outcome scoring , goals & passes full credit, woodwork/near-miss partial credit
     let clampedValue = 0.2
     const winningOutcomes = ['GOAL', 'TOP CORNER', 'CHIPPED HIM', 'TUCKED AWAY', 'BANGER', 'SUCCESS']
     const partialOutcomes = ['WOODWORK', 'CROSSBAR']
@@ -412,11 +409,14 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
     const momentumBoost = (momentum - 50) / 500
     const energyPenalty = (100 - energy) / 500
     const chaosMods = getChaosModifiers(activeCards)
-    const effectiveAccuracy = Math.max(0, Math.min(1.15, accuracy + statMod + momentumBoost + vibesMod - energyPenalty - chaosMods.accuracyPenalty))
-    const effectivePower = Math.max(0.2, Math.min(1.15, power + statMod * 0.4 - chaosMods.powerPenalty))
+    const scoutBonus = ctx.oppositionScouted ? 0.05 : 0
+    const setPieceBonus = ctx.setPieceReady && (activeMomentType === 'penalty' || activeMomentType === 'freekick') ? 0.08 : 0
+    const sensitivity = store.settings.inputSensitivity === 'high' ? 1.08 : store.settings.inputSensitivity === 'low' ? 0.94 : 1
+    const effectiveAccuracy = Math.max(0, Math.min(1.15, (accuracy + statMod + momentumBoost + vibesMod - energyPenalty - chaosMods.accuracyPenalty + scoutBonus + setPieceBonus) * sensitivity))
+    const effectivePower = Math.max(0.2, Math.min(1.15, (power + statMod * 0.4 - chaosMods.powerPenalty + setPieceBonus * 0.5) * sensitivity))
     lastDragVector.current = { angle, power: effectivePower, accuracy: effectiveAccuracy }
 
-    // TACKLE — direction + timing both matter; ENGINE extends reach, PACE widens timing
+    // TACKLE , direction + timing both matter; ENGINE extends reach, PACE widens timing
     if (activeMomentType === 'tackle') {
       setEnergy(e => Math.max(0, e - (10 - Math.round(statBoost(playerStats.graft) * 10))))
       const attacker = fieldNPCs.current.find((n: any) => n.type === 'attacker')
@@ -435,11 +435,11 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
         AudioManager.playKick('strike')
         screenShakeRef.current = 6
         hitStopRef.current = 4
-        resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Crunching tackle — ball won, cleanly.' })
+        resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Crunching tackle , ball won, cleanly.' })
       } else if (!timingOk && distFromPlayer > 110) {
         resolveSimulationOutcome({ outcome: 'EARLY', details: "Dived in too early. He's gone past you." })
       } else if (!timingOk) {
-        resolveSimulationOutcome({ outcome: 'LATE', details: "A split-second late — he's away." })
+        resolveSimulationOutcome({ outcome: 'LATE', details: "A split-second late , he's away." })
       } else {
         resolveSimulationOutcome({ outcome: 'BEATEN', details: "Wrong angle. He's just nutmegged you." })
       }
@@ -482,7 +482,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       const wellTimed = z > winLow && z < winHigh
       if (!wellTimed) {
         ball.current.active = false
-        resolveSimulationOutcome({ outcome: 'MISTIMED', details: 'Mistimed your jump — ball squirms over your head.' })
+        resolveSimulationOutcome({ outcome: 'MISTIMED', details: 'Mistimed your jump , ball squirms over your head.' })
         return
       }
       const sweetLow = 40 - headStat * 10
@@ -516,7 +516,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       const cushioned = effectiveAccuracy > minBand && effectivePower > 0.3 && effectivePower < maxBand
       scheduleMomentTimeout(() => {
         if (cushioned) {
-          resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Beautiful first touch — glued to your boot.' })
+          resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Beautiful first touch , glued to your boot.' })
         } else if (effectivePower >= maxBand) {
           resolveSimulationOutcome({ outcome: 'BOBBLED', details: 'Too heavy. Ball ran away from you.' })
         } else {
@@ -539,7 +539,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
         }
       }, baseDelay)
     }
-  }, [activeMomentType, activeCards, energy, momentum, playerStats, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial])
+  }, [activeMomentType, activeCards, energy, momentum, playerStats, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity])
 
   const updateSimulation = useCallback(() => {
     const b = ball.current
@@ -734,7 +734,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
     })
   }, [activeMomentType, pitch, weather, resolveSimulationOutcome])
 
-  // Humanoid drawing helper (head + body) — kept inline as per spec
+  // Humanoid drawing helper (head + body) , kept inline as per spec
   const drawHumanoid = (
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -1135,7 +1135,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
       <div style={{ background: 'var(--charcoal)', color: 'var(--cream)', padding: '12px', borderRadius: '8px', marginBottom: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <div>
-            <div style={{ fontSize: '10px', color: 'var(--kit-amber)', fontWeight: 'bold' }}>MOMENT {momentIndex + 1}/4 · vs {opponent.name.toUpperCase()}</div>
+            <div style={{ fontSize: '10px', color: 'var(--kit-amber)', fontWeight: 'bold' }}>{fixture.kind === 'cup' ? 'TANKARD · ' : ''}MOMENT {momentIndex + 1}/{totalMoments} · vs {opponent.name.toUpperCase()}</div>
             <div style={{ fontWeight: 'bold', fontSize: '14px', fontFamily: 'var(--font-primary)' }}>{info.title}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -1209,7 +1209,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
               onClick={() => {
                 const nextResults = [...momentResults, { type: activeMomentType, value: currentOutcome.clampedValue, outcome: currentOutcome.outcome }]
                 setMomentResults(nextResults)
-                if (momentIndex < 3) setMomentIndex(momentIndex + 1)
+                if (momentIndex < totalMoments - 1) setMomentIndex(momentIndex + 1)
                 else onCompleteMatch(nextResults, matchStats)
               }}
               style={{ width: 'auto', padding: '12px 40px' }}
@@ -1231,7 +1231,7 @@ export function ArenaScreen({ store, activeCards, onCompleteMatch }: ArenaScreen
           <div style={{ padding: '4px 7px', borderRight: '1px solid #444' }}>DUCK</div>
           <div style={{ padding: '4px 7px', fontWeight: 'bold', minWidth: '34px', textAlign: 'center' }}>{matchStats.goals}-?</div>
           <div style={{ padding: '4px 7px', borderLeft: '1px solid #444', background: 'rgba(255,255,255,0.06)' }}>{opponent.name.split(' ').map((w: string) => w[0]).join('').toUpperCase()}</div>
-          <div style={{ background: '#333', padding: '4px 7px' }}>{(momentIndex + 1) * 22}'</div>
+          <div style={{ background: '#333', padding: '4px 7px' }}>{Math.min(90, Math.round(((momentIndex + 1) / totalMoments) * 90))}'</div>
         </div>
 
         {/* Weather indicator */}

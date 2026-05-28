@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { JOBS } from '../data/jobs'
 

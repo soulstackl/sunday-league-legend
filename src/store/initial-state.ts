@@ -1,12 +1,13 @@
 import type { SaveState } from '../types/game'
 
-export const SAVE_KEY = 'sll_save_v2'
+export const SAVE_KEY = 'sll_save_v3'
+const LEGACY_SAVE_KEYS = ['sll_save_v2', 'sll_save_v1'] as const
+
+export const LEGACY_KEYS = LEGACY_SAVE_KEYS
 
 export const initialSaveState: SaveState = {
-  version: 2,
-
+  version: 3,
   seed: 12345,
-  rngState: 0,
   player: {
     name: '',
     archetype: '',
@@ -18,10 +19,13 @@ export const initialSaveState: SaveState = {
   },
   club: 'dog-and-duck',
   season: {
+    number: 1,
+    tier: 3,
     week: 1,
-    fixtures: [],
     results: [],
-    leagueTable: [],
+    aiTable: [],
+    cupExited: false,
+    cupWon: false,
   },
   npcs: {
     pete:       { relationshipScore: 50, events: [] },
@@ -29,10 +33,11 @@ export const initialSaveState: SaveState = {
     gav:        { relationshipScore: 50, events: [] },
     bigtaz:     { relationshipScore: 50, events: [] },
     callum:     { relationshipScore: 50, events: [] },
+    clive:      { relationshipScore: 40, events: [] },
     shaz:       { relationshipScore: 50, events: [] },
     dazza:      { relationshipScore: 50, events: [] },
     garyNephew: { relationshipScore: 50, events: [] },
-    bev:        { relationshipScore: 50, events: [] },
+    bev:        { relationshipScore: 55, events: [] },
   },
   careerEvents: [],
   groupChatLog: [],
@@ -42,5 +47,11 @@ export const initialSaveState: SaveState = {
     reducedMotion: false,
     soundEnabled: true,
     textSize: 'normal',
+    inputSensitivity: 'normal',
+  },
+  subplots: [],
+  contextModifiers: {
+    oppositionScouted: false,
+    setPieceReady: false,
   },
 }

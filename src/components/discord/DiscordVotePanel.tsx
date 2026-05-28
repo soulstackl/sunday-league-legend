@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '../shared/Card'
 
 interface VoteOption {
@@ -16,7 +16,7 @@ export function DiscordVotePanel({ options, onVoteComplete }: Props) {
   const [timeLeft, setTimeLeft] = useState(15)
 
   // Refs keep the interval closure up-to-date without restarting the timer.
-  // Updated after every render (not during render — React 19 refs rule).
+  // Updated after every render (not during render , React 19 refs rule).
   const votesRef = useRef(votes)
   const optionsRef = useRef(options)
   const onVoteCompleteRef = useRef(onVoteComplete)

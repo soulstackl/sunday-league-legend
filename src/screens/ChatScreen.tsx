@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Badge } from '../components/shared/Badge'
 import { ChatBubble } from '../components/chat/ChatBubble'
+import { NPCS } from '../data/npcs'
 import type { SaveState, ChatChoice } from '../types/game'
 
 interface ChatScreenProps {
@@ -32,8 +33,8 @@ export function ChatScreen({ store, onSendMessage, onBack, onChoice }: ChatScree
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Badge size={30} />
           <div>
-            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Dog &amp; Duck WhatsApp</div>
-            <div style={{ fontSize: '10px', opacity: 0.8 }}>9 Active Players</div>
+            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Dog &amp; Duck Group Chat</div>
+            <div style={{ fontSize: '10px', opacity: 0.8 }}>{Object.keys(NPCS).length} Active Members</div>
           </div>
         </div>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--cream)', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>

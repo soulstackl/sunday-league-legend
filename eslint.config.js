@@ -39,7 +39,7 @@ export default tseslint.config(
       // Allow common patterns in game code
       'no-constant-condition': 'off',
 
-      // New react-hooks v7 strict rules — downgrade to warn for game-engine patterns
+      // New react-hooks v7 strict rules , downgrade to warn for game-engine patterns
       // (canvas rAF loop, momentIndex-driven state reset, Discord vote init are all valid)
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/immutability': 'warn',

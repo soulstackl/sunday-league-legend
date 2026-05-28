@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "=== Sunday League Legend — pre-deploy checks ==="
+echo "=== Sunday League Legend , pre-deploy checks ==="
 echo ""
 
 bash scripts/typecheck.sh
@@ -14,5 +14,5 @@ bash scripts/build.sh
 bash scripts/audit.sh
 
 echo ""
-echo "=== All checks passed — push to main to trigger Amplify CI ==="
+echo "=== All checks passed , push to main to trigger Amplify CI ==="
 echo "    dist/ size: $(du -sh dist/ 2>/dev/null | cut -f1 || echo '?')"

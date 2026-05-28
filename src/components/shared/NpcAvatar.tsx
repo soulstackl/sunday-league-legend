@@ -1,4 +1,3 @@
-import React from 'react'
 import { NPCS } from '../../data/npcs'
 
 interface Props {

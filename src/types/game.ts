@@ -9,6 +9,8 @@ export interface PlayerStats {
   vibes: number
 }
 
+export type StatKey = keyof PlayerStats
+
 export interface PlayerStates {
   form: number
   fitness: number
@@ -94,11 +96,11 @@ export interface MidweekActionEffects {
   teamChemistry?: number
   vibes?: number
   injuryRisk?: number
-  statBoost?: string
-  statBoostOptions?: string[]
+  statBoost?: 'random'
+  statBoostOptions?: StatKey[]
   targetRelationship?: number
   hangoverRisk?: boolean
-  contextModifier?: string
+  contextModifier?: 'opposition-scouted' | 'set-piece-ready'
   specialModifier?: string
   strike?: number
 }
@@ -111,6 +113,7 @@ export interface MidweekAction {
   effects: MidweekActionEffects
   groupChatTrigger: string | null
   npcTarget?: boolean
+  statChoice?: boolean
 }
 
 export interface ChaosCardChoice {
@@ -122,6 +125,7 @@ export interface ChaosCardChoice {
     teamChemistry?: number
     strike?: number
     vibes?: number
+    fatigue?: number
   }
   outcome: string
 }
@@ -158,14 +162,6 @@ export interface NpcState {
   events: string[]
 }
 
-export interface MatchResult {
-  week: number
-  ourGoals: number
-  theirGoals: number
-  rating: number
-  stats: MatchStats
-}
-
 export interface MatchStats {
   shots: number
   goals: number
@@ -175,25 +171,68 @@ export interface MatchStats {
   tackleSuccess: number
 }
 
+export interface MatchResult {
+  week: number
+  competition: 'league' | 'cup'
+  ourGoals: number
+  theirGoals: number
+  rating: number
+  stats: MatchStats
+  opponentId: string
+  cupRound?: 'quarter-final' | 'semi-final' | 'final'
+  cupExit?: boolean
+  cupWin?: boolean
+}
+
 export interface CareerEvent {
   type: string
   action?: string
   week?: number
   result?: string
   pts?: number
+  subplotId?: string
+  outcome?: string
+}
+
+export interface AiTeamRecord {
+  opponentId: string
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  points: number
 }
 
 export interface Season {
+  number: number
+  tier: 1 | 2 | 3
   week: number
-  fixtures: string[]
   results: MatchResult[]
-  leagueTable: unknown[]
+  aiTable: AiTeamRecord[]
+  cupExited: boolean
+  cupWon: boolean
+}
+
+export interface SubplotProgress {
+  id: string
+  stage: number
+  startedWeek: number
+  resolved: boolean
+  outcome?: string
+}
+
+export interface ContextModifiers {
+  oppositionScouted: boolean
+  setPieceReady: boolean
 }
 
 export interface GameSettings {
   reducedMotion: boolean
   soundEnabled: boolean
-  textSize: string
+  textSize: 'small' | 'normal' | 'large'
+  inputSensitivity: 'low' | 'normal' | 'high'
 }
 
 export interface HallOfFameEntry {
@@ -201,12 +240,16 @@ export interface HallOfFameEntry {
   archetype: string
   title: string
   date: number
+  seasons: number
+  goals: number
+  points: number
+  cupWon: boolean
+  finalTier: 1 | 2 | 3
 }
 
 export interface SaveState {
   version: number
   seed: number
-  rngState: number
   savedAt?: number
   player: Player
   club: string
@@ -217,6 +260,8 @@ export interface SaveState {
   chaosCardHistory: { id: string; week: number }[]
   hallOfFame: HallOfFameEntry[]
   settings: GameSettings
+  subplots: SubplotProgress[]
+  contextModifiers: ContextModifiers
 }
 
 export interface MatchReport {

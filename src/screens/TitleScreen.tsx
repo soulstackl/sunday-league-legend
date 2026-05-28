@@ -1,14 +1,14 @@
-import React from 'react'
 import { Badge } from '../components/shared/Badge'
 
 interface TitleScreenProps {
   onNew: () => void
   onContinue: () => void
   onHall: () => void
+  onSettings: () => void
   hasSave: boolean
 }
 
-export function TitleScreen({ onNew, onContinue, onHall, hasSave }: TitleScreenProps) {
+export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: TitleScreenProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '24px', textAlign: 'center' }}>
       <div style={{ animation: 'bounce 2s infinite', marginBottom: '20px' }}>
@@ -31,8 +31,12 @@ export function TitleScreen({ onNew, onContinue, onHall, hasSave }: TitleScreenP
         </button>
       )}
 
-      <button aria-label="View Hall of Fame" onClick={onHall} style={{ width: '100%', padding: '16px', background: 'var(--surface)', color: 'var(--charcoal)', border: '3px solid var(--border)', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        HALL OF FAME
+      <button aria-label="View Hall of Fame" onClick={onHall} style={{ width: '100%', padding: '14px', background: 'var(--surface)', color: 'var(--charcoal)', border: '3px solid var(--border)', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '8px' }}>
+        🏆 HALL OF FAME
+      </button>
+
+      <button aria-label="Open settings" onClick={onSettings} style={{ width: '100%', padding: '10px', background: 'transparent', color: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+        ⚙️ Settings
       </button>
     </div>
   )

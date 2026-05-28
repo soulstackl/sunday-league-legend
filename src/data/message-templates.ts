@@ -17,7 +17,7 @@ export const MESSAGE_TEMPLATES: Record<string, ChatMessage[]> = {
     { sender: 'bigtaz',     text: 'Deano you are literally five minutes down the road.',                   time: '8:52am' },
     { sender: 'deano',      text: 'I am moving. Mostly.',                                                  time: '8:53am' },
     { sender: 'bev',        text: 'Last warning, no fees, no football.',                                   time: '8:55am' },
-    { sender: 'pete',       text: "Who has the first aid kit? Deano says his back is gone again.",         time: '8:57am' },
+    { sender: 'pete',       text: 'Who has the first aid kit? Deano says his back is gone again.',         time: '8:57am' },
     { sender: 'bigtaz',     text: 'I have it. Also have the deep heat. Gary, stay away from it.',          time: '8:58am' },
     { sender: 'garyNephew', text: "Sorry Taz. Won't happen again.",                                        time: '8:59am' },
   ],
@@ -30,6 +30,14 @@ export const MESSAGE_TEMPLATES: Record<string, ChatMessage[]> = {
     { sender: 'garyNephew', text: 'Unreal match! Cheers gaffer for the sub appearance!',                   time: '2:48pm' },
     { sender: 'shaz',       text: 'Played some decent stuff today. Simple but effective.',                 time: '2:50pm' },
     { sender: 'bev',        text: 'Match fees paid. Mostly. Gav, see me later.',                           time: '2:55pm' },
+  ],
+  postMatchDraw: [
+    { sender: 'pete',       text: 'A point is a point. We will take it. Move on.',                         time: '2:30pm' },
+    { sender: 'bigtaz',     text: 'Honest result that. Both teams could have nicked it.',                  time: '2:33pm' },
+    { sender: 'shaz',       text: 'Should have been more clinical. We had the chances.',                   time: '2:38pm' },
+    { sender: 'dazza',      text: 'Going for a pint either way. Whose round?',                             time: '2:42pm' },
+    { sender: 'callum',     text: 'Felt like a win and a loss at the same time. Weird one.',               time: '2:46pm' },
+    { sender: 'bev',        text: 'Decent point, lads. Now hand the kits in this time please.',            time: '2:55pm' },
   ],
   postMatchLoss: [
     { sender: 'pete',       text: 'Absolute rubbish. We did not work hard enough. Simple as.',             time: '2:30pm' },
@@ -54,12 +62,12 @@ export const MESSAGE_TEMPLATES: Record<string, ChatMessage[]> = {
 export const CHOICE_MESSAGES: Record<string, ChatMessage> = {
   'training-banter': {
     sender: 'pete',
-    text: 'Right, good session today. I saw you grafting. That\'s what I want to see from you.',
+    text: "Right, good session today. I saw you grafting. That's what I want to see from you.",
     time: 'Wed 8:30pm',
     choices: [
-      { text: 'Cheers gaffer. Felt sharp.',                    effect: { relationship: { pete: 8 }, vibes: 1 } },
-      { text: "Tell Gav to stay onside in practice then.",     effect: { relationship: { pete: -3, gav: -8 } } },
-      { text: "I'll be there every week, gaffer. No question.", effect: { relationship: { pete: 12 }, vibes: 2 } },
+      { text: 'Cheers gaffer. Felt sharp.',                       effect: { relationship: { pete: 8 }, vibes: 1 } },
+      { text: 'Tell Gav to stay onside in practice then.',         effect: { relationship: { pete: -3, gav: -8 } } },
+      { text: "I'll be there every week, gaffer. No question.",   effect: { relationship: { pete: 12 }, vibes: 2 } },
     ],
   },
   'rest-day-message': {
@@ -67,9 +75,9 @@ export const CHOICE_MESSAGES: Record<string, ChatMessage> = {
     text: "Oi, you not at training? Pete is doing his head in. He's already picking Gary.",
     time: 'Wed 7:20pm',
     choices: [
-      { text: "Tell him I'm managing a knock. Body needed it.", effect: { relationship: { deano: 5, pete: -3 } } },
-      { text: 'I know, I know. Just needed the rest mate.',    effect: { relationship: { deano: 5 } } },
-      { text: "He can ring me himself if he's that bothered.", effect: { relationship: { deano: -5, pete: -10 } } },
+      { text: "Tell him I'm managing a knock. Body needed it.",   effect: { relationship: { deano: 5, pete: -3 } } },
+      { text: 'I know, I know. Just needed the rest mate.',       effect: { relationship: { deano: 5 } } },
+      { text: "He can ring me himself if he's that bothered.",    effect: { relationship: { deano: -5, pete: -10 } } },
     ],
   },
   'pub-night-chaos': {
@@ -77,9 +85,9 @@ export const CHOICE_MESSAGES: Record<string, ChatMessage> = {
     text: 'Absolute scenes at the Duck. Gav is buying rounds until someone agrees he was onside against Anchor Athletic three weeks ago.',
     time: 'Tue 10:45pm',
     choices: [
-      { text: 'He was onside. Definitely. Get the pints in Gav.',   effect: { relationship: { gav: 15, dazza: 5 } } },
+      { text: 'He was onside. Definitely. Get the pints in Gav.',    effect: { relationship: { gav: 15, dazza: 5 } } },
       { text: "He was three yards off. He's always three yards off.", effect: { relationship: { gav: -10, dazza: 10 } } },
-      { text: "I'm staying well out of this one.",                   effect: {} },
+      { text: "I'm staying well out of this one.",                    effect: {} },
     ],
   },
   'overtime-excuse': {

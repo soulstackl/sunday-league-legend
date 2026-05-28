@@ -1,4 +1,3 @@
-import React from 'react'
 import type { ChatMessage, ChatChoice } from '../../types/game'
 import { NPCS } from '../../data/npcs'
 import { NpcAvatar } from '../shared/NpcAvatar'

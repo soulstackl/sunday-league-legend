@@ -1,4 +1,3 @@
-import React from 'react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { Card } from '../components/shared/Card'

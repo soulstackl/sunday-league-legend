@@ -1,4 +1,4 @@
-# Sunday League Legend — Agreed Tech Stack
+# Sunday League Legend , Agreed Tech Stack
 
 ## Overview
 
@@ -19,7 +19,7 @@
 
 **Vite** is the build tool. It handles JSX/TSX compilation natively (no Babel standalone), provides instant HMR during development, tree-shakes the output, and minifies the production bundle.
 
-**React 18** is the UI framework. The existing codebase is already React-shaped — all components, hooks, and state patterns carry over directly.
+**React 18** is the UI framework. The existing codebase is already React-shaped , all components, hooks, and state patterns carry over directly.
 
 **TypeScript** adds type safety across the game engine, state model, and component props. Catching shape errors at compile time matters especially for the save schema and moment resolution logic.
 
@@ -137,7 +137,7 @@ Amplify wraps S3 + CloudFront with a managed CI/CD layer. Connect a GitHub repos
 
 ### Why AWS over Firebase
 
-Firebase's JavaScript SDK dynamically injects scripts at runtime. Discord enforces strict Content Security Policy (CSP) inside its Activity iframe, which blocks this injection. This is a documented, confirmed conflict — teams that have shipped Discord Activities on Firebase have had to pre-download and vendor every Firebase SDK file into their build to work around it. That workaround grows in maintenance cost with every SDK update.
+Firebase's JavaScript SDK dynamically injects scripts at runtime. Discord enforces strict Content Security Policy (CSP) inside its Activity iframe, which blocks this injection. This is a documented, confirmed conflict , teams that have shipped Discord Activities on Firebase have had to pre-download and vendor every Firebase SDK file into their build to work around it. That workaround grows in maintenance cost with every SDK update.
 
 AWS Amplify serves plain static files with no runtime script injection. No CSP conflict.
 
@@ -177,7 +177,7 @@ Discord client (host)         Discord clients (spectators)
 
 ### Why this over alternatives
 
-**Cloudflare Durable Objects** would also work well and is arguably more elegant. AWS is chosen here for ecosystem consistency — hosting, sync, and future cloud saves all under one account and one billing dashboard.
+**Cloudflare Durable Objects** would also work well and is arguably more elegant. AWS is chosen here for ecosystem consistency , hosting, sync, and future cloud saves all under one account and one billing dashboard.
 
 **Partykit** (built on Cloudflare) is a higher-level abstraction for exactly this pattern. Worth revisiting if AWS complexity becomes a concern.
 
@@ -193,7 +193,7 @@ API Gateway WebSocket: 1 million messages free per month, then $1.00 per million
 Lambda: 1 million requests free per month.
 DynamoDB: 25GB storage free, 200M requests free per month (on-demand).
 
-A typical SLL session involves 10–20 WebSocket connections and a few hundred messages. The free tier covers this comfortably into the thousands of sessions per month.
+A typical SLL session involves 10-20 WebSocket connections and a few hundred messages. The free tier covers this comfortably into the thousands of sessions per month.
 
 ---
 
@@ -209,7 +209,7 @@ Schema versioning is in place. Future migrations follow the existing v1 → v2 p
 
 ## Discord integration
 
-The Discord Embedded App SDK is isolated behind a `PlatformAdapter` interface. The game never calls the SDK directly — all SDK calls go through `src/platform/discord.ts`. The standalone adapter (`src/platform/standalone.ts`) is a no-op that lets the game run identically outside Discord.
+The Discord Embedded App SDK is isolated behind a `PlatformAdapter` interface. The game never calls the SDK directly , all SDK calls go through `src/platform/discord.ts`. The standalone adapter (`src/platform/standalone.ts`) is a no-op that lets the game run identically outside Discord.
 
 This means:
 
@@ -226,11 +226,11 @@ Discord blocks inline scripts and dynamic code injection. The Vite build must pr
 ## Testing
 
 **Vitest** for unit tests on the engine layer. No browser required for:
-- `rng.ts` — seeded output verification
-- `moment.ts` — resolveMoment outcomes across stat/input combinations
-- `chaos.ts` — card eligibility and weighting
-- `weekly.ts` — stat updates, relationship changes, progression
-- `persistence.ts` — save/load and migration correctness
+- `rng.ts` , seeded output verification
+- `moment.ts` , resolveMoment outcomes across stat/input combinations
+- `chaos.ts` , card eligibility and weighting
+- `weekly.ts` , stat updates, relationship changes, progression
+- `persistence.ts` , save/load and migration correctness
 
 UI components are not unit tested at this stage. Manual device testing covers the interaction model.
 
@@ -252,6 +252,6 @@ UI components are not unit tested at this stage. Manual device testing covers th
 
 ## Open decisions
 
-1. **Cloud saves** — DynamoDB schema and API contract not yet defined. Decision: defer until Discord integration is proven in a live environment. Local saves (localStorage v2) are sufficient for solo play.
-2. **Phaser for ArenaScreen** — Decided against. The hand-rolled Canvas implementation handles the drag-aim mechanic well; Phaser would add dependency weight without clear benefit at this scope. Revisit only if physics or animation requirements grow significantly beyond the current moment types.
-3. **SAM vs CDK** — Still SAM. Backend not yet built. Revisit if the Lambda count grows beyond five or infrastructure needs more composition.
+1. **Cloud saves** , DynamoDB schema and API contract not yet defined. Decision: defer until Discord integration is proven in a live environment. Local saves (localStorage v2) are sufficient for solo play.
+2. **Phaser for ArenaScreen** , Decided against. The hand-rolled Canvas implementation handles the drag-aim mechanic well; Phaser would add dependency weight without clear benefit at this scope. Revisit only if physics or animation requirements grow significantly beyond the current moment types.
+3. **SAM vs CDK** , Still SAM. Backend not yet built. Revisit if the Lambda count grows beyond five or infrastructure needs more composition.
