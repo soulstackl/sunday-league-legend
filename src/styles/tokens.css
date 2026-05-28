@@ -1,0 +1,61 @@
+:root {
+  --pitch-green: #2d5a27;
+  --pitch-line: #4a7c42;
+  --mud-brown: #8B6914;
+  --kit-amber: #F59E0B;
+  --kit-amber-dark: #D97706;
+  --cream: #FEF3C7;
+  --off-white: #FAFAF8;
+  --charcoal: #1C1917;
+  --warm-grey: #78716C;
+  --danger: #DC2626;
+  --success: #16A34A;
+  --card-bg: #FFFFFF;
+  --surface: #F5F0E8;
+  --border: #E7E0D4;
+
+  --font-primary: Georgia, serif;
+  --font-ui: 'Outfit', -apple-system, sans-serif;
+  --font-mono: 'Courier Prime', 'Courier New', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  outline-color: var(--kit-amber);
+}
+
+body {
+  background-color: var(--charcoal);
+  color: var(--charcoal);
+  font-family: var(--font-ui);
+  overflow-x: hidden;
+  min-height: 100vh;
+  background-image:
+    linear-gradient(rgba(28, 25, 23, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 25, 23, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--warm-grey);
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
