@@ -1,5 +1,4 @@
-import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Settings, CheckCircle2 } from 'lucide-react'
-import { ThemeToggle } from '../components/shared/ThemeToggle'
+import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Settings, CheckCircle2, UserCircle2 } from 'lucide-react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { StatusBar } from '../components/shared/StatusBar'
@@ -21,10 +20,11 @@ interface HubScreenProps {
   onHall: () => void
   onSquad: () => void
   onTable: () => void
+  onPlayer: () => void
   isDiscord: boolean
 }
 
-export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, onNextMatch, onHall, onSquad, onTable, isDiscord }: HubScreenProps) {
+export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, onNextMatch, onHall, onSquad, onTable, onPlayer, isDiscord }: HubScreenProps) {
   const p = store.player
   const week = store.season.week
   const tierName = TIER_NAMES[store.season.tier]
@@ -93,18 +93,31 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
         <Badge size={42} />
       </div>
 
-      {/* Identity chips */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
-        {[
-          { label: 'Job', value: JOBS.find(j => j.id === p.job)?.name ?? 'Jobless' },
-          { label: 'Archetype', value: ARCHETYPES.find(a => a.id === p.archetype)?.name ?? 'The Unit' },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '3px' }}>{label}</div>
-            <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text)' }}>{value}</div>
+      {/* Identity row: tap to open player profile */}
+      <button
+        type="button"
+        onClick={onPlayer}
+        aria-label="Open player profile"
+        style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%', marginBottom: '14px' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px' }}>
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            {[
+              { label: 'Archetype', value: ARCHETYPES.find(a => a.id === p.archetype)?.name ?? 'The Unit' },
+              { label: 'Position', value: p.position },
+              { label: 'Job', value: JOBS.find(j => j.id === p.job)?.name ?? 'Jobless' },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ background: 'var(--surface)', padding: '10px 10px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '3px' }}>{label}</div>
+                <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--text)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--accent)' }} aria-hidden="true">
+            <UserCircle2 size={18} />
+          </div>
+        </div>
+      </button>
 
       {/* Status bars */}
       <div style={{ background: 'var(--card-bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '14px' }}>
@@ -189,7 +202,7 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
       </button>
 
       {/* Utility row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
         <button
           aria-label="Open settings"
           onClick={onSettings}
@@ -198,7 +211,6 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
           <Settings size={13} />
           Settings
         </button>
-        <ThemeToggle />
         <button
           aria-label="View Hall of Fame"
           onClick={onHall}

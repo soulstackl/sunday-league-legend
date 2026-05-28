@@ -32,18 +32,37 @@ export function JobScreen({ onNext }: JobScreenProps) {
                 borderRadius: '14px',
                 padding: '14px',
                 cursor: 'pointer',
-                transition: 'border-color 0.15s, background 0.15s',
+                transition: 'border-color 0.15s, background 0.15s, transform 0.15s',
+                transform: isSel ? 'translateY(-1px)' : 'none',
+                boxShadow: isSel ? '0 6px 18px rgba(124,58,237,0.18)' : 'none',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', gap: '10px' }}>
                 <span style={{ fontWeight: 700, fontSize: '16px', color: isSel ? 'var(--accent)' : 'var(--text)' }}>{job.name}</span>
-                <span style={{ fontSize: '11px', background: isSel ? 'var(--accent-bg)' : 'var(--surface)', color: isSel ? 'var(--accent)' : 'var(--text-muted)', padding: '3px 8px', borderRadius: '20px', fontWeight: 600 }}>
+                <span style={{ fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', background: isSel ? 'var(--accent-bg-strong)' : 'var(--surface)', color: isSel ? 'var(--accent)' : 'var(--text-muted)', padding: '3px 9px', borderRadius: '20px', fontWeight: 700, border: '1px solid var(--border)', flexShrink: 0 }}>
                   {job.trait}
                 </span>
               </div>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.4' }}>{job.text}</p>
-              <div style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                {Object.entries(job.modifier).map(([k, v]) => `+${v} ${k.toUpperCase()}`).join(', ')}
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: '1.45' }}>{job.text}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {Object.entries(job.modifier).map(([k, v]) => (
+                  <span
+                    key={k}
+                    style={{
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)',
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      background: 'var(--success-bg)',
+                      color: 'var(--success)',
+                      fontWeight: 700,
+                      border: '1px solid var(--border)',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    +{v} {k.toUpperCase()}
+                  </span>
+                ))}
               </div>
             </div>
           )

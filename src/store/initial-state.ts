@@ -1,12 +1,12 @@
 import type { SaveState } from '../types/game'
 
-export const SAVE_KEY = 'sll_save_v3'
-const LEGACY_SAVE_KEYS = ['sll_save_v2', 'sll_save_v1'] as const
+export const SAVE_KEY = 'sll_save_v4'
+const LEGACY_SAVE_KEYS = ['sll_save_v3', 'sll_save_v2', 'sll_save_v1'] as const
 
 export const LEGACY_KEYS = LEGACY_SAVE_KEYS
 
 export const initialSaveState: SaveState = {
-  version: 3,
+  version: 4,
   seed: 12345,
   player: {
     name: '',
@@ -53,5 +53,6 @@ export const initialSaveState: SaveState = {
   contextModifiers: {
     oppositionScouted: false,
     setPieceReady: false,
+    hangoverPending: false,
   },
 }

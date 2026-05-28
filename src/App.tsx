@@ -24,6 +24,15 @@ import { initialSaveState, SAVE_KEY, LEGACY_KEYS } from './store/initial-state'
 import { platformAdapter } from './platform/standalone'
 import { AudioManager } from './audio/AudioManager'
 import { resolveCareerEnding } from './engine/endings'
+import {
+  applyWeeklyTraitTick,
+  pickSignatureTrait,
+  getTrainingExtraStat,
+  getPubFatigueReduction,
+  getPubHangoverImmune,
+  getOvertimeFatigueReduction,
+} from './engine/traits'
+import { applyJobWeeklyTick } from './engine/jobs-weekly'
 
 import { TitleScreen } from './screens/TitleScreen'
 import { NameScreen } from './screens/NameScreen'
@@ -43,12 +52,13 @@ import { HallOfFameScreen } from './screens/HallOfFameScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SquadScreen } from './screens/SquadScreen'
 import { StatGrowthScreen } from './screens/StatGrowthScreen'
+import { PlayerScreen } from './screens/PlayerScreen'
 
 type Screen =
   | 'title' | 'name' | 'archetype' | 'job' | 'intro'
   | 'hub' | 'midweek' | 'chat' | 'chaos' | 'briefing' | 'arena'
   | 'postmatch' | 'table' | 'complete' | 'hall' | 'settings'
-  | 'squad' | 'growth'
+  | 'squad' | 'growth' | 'player'
 
 interface MatchReportLocal {
   ourGoals: number
@@ -61,6 +71,22 @@ interface MatchReportLocal {
 }
 
 const STAT_KEYS: StatKey[] = ['touch', 'strike', 'pass', 'engine', 'graft', 'head', 'pace', 'vibes']
+
+const ARCHETYPE_POSITION: Record<string, string> = {
+  unit: 'ST',
+  winger: 'LW',
+  organiser: 'CM',
+}
+
+const ARCHETYPE_GROWTH_PRIORITY: Record<string, StatKey[]> = {
+  unit: ['head', 'strike', 'graft', 'engine'],
+  winger: ['pace', 'touch', 'strike', 'vibes'],
+  organiser: ['pass', 'engine', 'vibes', 'graft'],
+}
+
+const SUCCESS_OUTCOMES = new Set(['GOAL', 'SUCCESS', 'TOP CORNER', 'CHIPPED HIM', 'TUCKED AWAY', 'BANGER', 'RECOVERY'])
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 function applyTextSize(size: 'small' | 'normal' | 'large') {
   const root = document.documentElement
@@ -121,28 +147,38 @@ export function App() {
 
   const triggerMidweekAction = (action: MidweekAction, statChoice?: StatKey, npcTarget?: string) => {
     updateStore(s => {
-      s.player.states.fatigue = Math.min(100, Math.max(0, s.player.states.fatigue + (action.effects.fatigue ?? 0)))
-      s.player.states.fitness = Math.min(100, Math.max(0, s.player.states.fitness + (action.effects.fitness ?? 0)))
-      s.player.states.managerTrust = Math.min(100, Math.max(0, s.player.states.managerTrust + (action.effects.managerTrust ?? 0)))
-      s.player.states.confidence = Math.min(100, Math.max(0, s.player.states.confidence + (action.effects.confidence ?? 0)))
-      s.player.states.teamChemistry = Math.min(100, Math.max(0, s.player.states.teamChemistry + (action.effects.teamChemistry ?? 0)))
-      s.player.states.injuryRisk = Math.min(100, Math.max(0, s.player.states.injuryRisk + (action.effects.injuryRisk ?? 0)))
-      if (action.effects.vibes) s.player.stats.vibes = Math.min(20, Math.max(1, s.player.stats.vibes + action.effects.vibes))
-      if (action.effects.strike) s.player.stats.strike = Math.min(20, Math.max(1, s.player.stats.strike + action.effects.strike))
+      const traits = s.player.traits
+      const pubFatigueRelief = action.id === 'pub' ? getPubFatigueReduction(traits) : 0
+      const overtimeFatigueRelief = action.id === 'overtime' ? getOvertimeFatigueReduction(traits) : 0
+      const fatigueDelta = (action.effects.fatigue ?? 0) - pubFatigueRelief - overtimeFatigueRelief
+
+      s.player.states.fatigue = clamp(s.player.states.fatigue + fatigueDelta, 0, 100)
+      s.player.states.fitness = clamp(s.player.states.fitness + (action.effects.fitness ?? 0), 0, 100)
+      s.player.states.managerTrust = clamp(s.player.states.managerTrust + (action.effects.managerTrust ?? 0), 0, 100)
+      s.player.states.confidence = clamp(s.player.states.confidence + (action.effects.confidence ?? 0), 0, 100)
+      s.player.states.teamChemistry = clamp(s.player.states.teamChemistry + (action.effects.teamChemistry ?? 0), 0, 100)
+      s.player.states.injuryRisk = clamp(s.player.states.injuryRisk + (action.effects.injuryRisk ?? 0), 0, 100)
+      if (action.effects.vibes) s.player.stats.vibes = clamp(s.player.stats.vibes + action.effects.vibes, 1, 20)
+      if (action.effects.strike) s.player.stats.strike = clamp(s.player.stats.strike + action.effects.strike, 1, 20)
 
       if (action.effects.statBoost === 'random') {
         const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEvents.length)
         const k = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
         s.player.stats[k] = Math.min(20, s.player.stats[k] + 1)
+        if (getTrainingExtraStat(traits)) {
+          const k2 = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
+          s.player.stats[k2] = Math.min(20, s.player.stats[k2] + 1)
+        }
       }
       if (statChoice && action.effects.statBoostOptions?.includes(statChoice)) {
         s.player.stats[statChoice] = Math.min(20, s.player.stats[statChoice] + 1)
       }
       if (action.effects.targetRelationship && npcTarget && s.npcs[npcTarget]) {
-        s.npcs[npcTarget].relationshipScore = Math.min(100, s.npcs[npcTarget].relationshipScore + action.effects.targetRelationship)
+        s.npcs[npcTarget].relationshipScore = clamp(s.npcs[npcTarget].relationshipScore + action.effects.targetRelationship, 0, 100)
       }
       if (action.effects.contextModifier === 'opposition-scouted') s.contextModifiers.oppositionScouted = true
       if (action.effects.contextModifier === 'set-piece-ready') s.contextModifiers.setPieceReady = true
+      if (action.effects.hangoverRisk && !getPubHangoverImmune(traits)) s.contextModifiers.hangoverPending = true
 
       s.careerEvents.push({ type: 'midweek_action', action: action.id, week: s.season.week })
 
@@ -155,7 +191,6 @@ export function App() {
       const label = npcTarget && s.npcs[npcTarget] ? action.name + ' with ' + (NPCS[npcTarget]?.name ?? npcTarget) : action.name
       s.groupChatLog.push({ sender: 'system', text: s.player.name + ' chose: ' + label, time: 'Now' })
 
-      // Trigger weekly subplots if any
       const newSubplots = subplotsToTriggerThisWeek(s.season.week, s.subplots)
       for (const sub of newSubplots) {
         s.subplots.push({ id: sub.id, stage: 0, startedWeek: s.season.week, resolved: false })
@@ -168,17 +203,23 @@ export function App() {
 
   const kickOffMatch = (cards: ChaosCard[], choiceEffects: ChaosCardChoice['effect'][] = []) => {
     updateStore(s => {
+      if (s.contextModifiers.hangoverPending) {
+        s.player.states.confidence = clamp(s.player.states.confidence - 5, 0, 100)
+        s.player.states.fatigue = clamp(s.player.states.fatigue + 5, 0, 100)
+        s.groupChatLog.push({ sender: 'system', text: 'Saturday night caught up with you. Head fuzzy, legs heavy.', time: 'Sun' })
+        s.contextModifiers.hangoverPending = false
+      }
       choiceEffects.forEach(effect => {
         if (!effect) return
-        if (effect.confidence) s.player.states.confidence = Math.min(100, Math.max(0, s.player.states.confidence + effect.confidence))
-        if (effect.refereeRep) s.player.states.refereeRep = Math.min(100, Math.max(0, s.player.states.refereeRep + effect.refereeRep))
-        if (effect.teamChemistry) s.player.states.teamChemistry = Math.min(100, Math.max(0, s.player.states.teamChemistry + effect.teamChemistry))
-        if (effect.fatigue) s.player.states.fatigue = Math.min(100, Math.max(0, s.player.states.fatigue + effect.fatigue))
-        if (effect.strike) s.player.stats.strike = Math.min(20, Math.max(1, s.player.stats.strike + effect.strike))
-        if (effect.vibes) s.player.stats.vibes = Math.min(20, Math.max(1, s.player.stats.vibes + effect.vibes))
+        if (effect.confidence) s.player.states.confidence = clamp(s.player.states.confidence + effect.confidence, 0, 100)
+        if (effect.refereeRep) s.player.states.refereeRep = clamp(s.player.states.refereeRep + effect.refereeRep, 0, 100)
+        if (effect.teamChemistry) s.player.states.teamChemistry = clamp(s.player.states.teamChemistry + effect.teamChemistry, 0, 100)
+        if (effect.fatigue) s.player.states.fatigue = clamp(s.player.states.fatigue + effect.fatigue, 0, 100)
+        if (effect.strike) s.player.stats.strike = clamp(s.player.stats.strike + effect.strike, 1, 20)
+        if (effect.vibes) s.player.stats.vibes = clamp(s.player.stats.vibes + effect.vibes, 1, 20)
         if (effect.relationship) {
           Object.entries(effect.relationship).forEach(([npcId, delta]) => {
-            if (s.npcs[npcId]) s.npcs[npcId].relationshipScore = Math.min(100, Math.max(0, s.npcs[npcId].relationshipScore + delta))
+            if (s.npcs[npcId]) s.npcs[npcId].relationshipScore = clamp(s.npcs[npcId].relationshipScore + delta, 0, 100)
           })
         }
       })
@@ -194,7 +235,7 @@ export function App() {
     const opponent = fixture.opponent
     const rng = mulberry32(store.seed + week * 3)
     const outcome = simulateMatch(results, store.player.states, activeCards, opponent, rng)
-    const successfulMoments = results.filter(r => r.outcome === 'GOAL' || r.outcome === 'SUCCESS' || r.outcome === 'TOP CORNER' || r.outcome === 'CHIPPED HIM' || r.outcome === 'TUCKED AWAY' || r.outcome === 'BANGER').length
+    const successfulMoments = results.filter(r => SUCCESS_OUTCOMES.has(r.outcome)).length
     const rating = Math.min(10, Math.max(3, Math.round(successfulMoments * 2.5 + rng() * 3)))
     const won = outcome.ourGoals > outcome.theirGoals
     const drew = outcome.ourGoals === outcome.theirGoals
@@ -216,16 +257,16 @@ export function App() {
       if (fixture.kind === 'cup' && !won) s.season.cupExited = true
       if (fixture.kind === 'cup' && fixture.cupRound === 'final' && won) s.season.cupWon = true
 
-      s.player.states.confidence = Math.min(100, Math.max(0, s.player.states.confidence + (won ? 10 : drew ? 2 : -5)))
+      s.player.states.confidence = clamp(s.player.states.confidence + (won ? 10 : drew ? 2 : -5), 0, 100)
       s.player.states.fatigue = Math.min(100, s.player.states.fatigue + (fixture.kind === 'cup' ? 18 : 15))
-      s.player.states.managerTrust = Math.min(100, Math.max(0, s.player.states.managerTrust + (rating > 6 ? 8 : -4)))
-      s.player.states.teamChemistry = Math.min(100, Math.max(0, s.player.states.teamChemistry + (won ? 5 : drew ? 1 : -5)))
+      s.player.states.managerTrust = clamp(s.player.states.managerTrust + (rating > 6 ? 8 : -4), 0, 100)
+      s.player.states.teamChemistry = clamp(s.player.states.teamChemistry + (won ? 5 : drew ? 1 : -5), 0, 100)
       s.player.states.localFame = Math.min(100, s.player.states.localFame + (won ? 4 : 1) + (stats?.goals ?? 0) * 2)
       s.player.states.form = Math.max(-3, Math.min(3, s.player.states.form + (won ? 0.7 : drew ? 0 : -0.6)))
 
       const trustNudge = won ? 3 : drew ? 0 : -2
       Object.keys(s.npcs).forEach(id => {
-        s.npcs[id].relationshipScore = Math.min(100, Math.max(0, s.npcs[id].relationshipScore + trustNudge))
+        s.npcs[id].relationshipScore = clamp(s.npcs[id].relationshipScore + trustNudge, 0, 100)
       })
 
       s.contextModifiers.oppositionScouted = false
@@ -260,13 +301,12 @@ export function App() {
 
       if (choice.effect.relationship) {
         Object.entries(choice.effect.relationship).forEach(([npcId, delta]) => {
-          if (s.npcs[npcId]) s.npcs[npcId].relationshipScore = Math.min(100, Math.max(0, s.npcs[npcId].relationshipScore + delta))
+          if (s.npcs[npcId]) s.npcs[npcId].relationshipScore = clamp(s.npcs[npcId].relationshipScore + delta, 0, 100)
         })
       }
-      if (choice.effect.vibes) s.player.stats.vibes = Math.min(20, Math.max(1, s.player.stats.vibes + choice.effect.vibes))
-      if (choice.effect.confidence) s.player.states.confidence = Math.min(100, Math.max(0, s.player.states.confidence + choice.effect.confidence))
+      if (choice.effect.vibes) s.player.stats.vibes = clamp(s.player.stats.vibes + choice.effect.vibes, 1, 20)
+      if (choice.effect.confidence) s.player.states.confidence = clamp(s.player.states.confidence + choice.effect.confidence, 0, 100)
 
-      // Resolve any matching subplot that produced this message (best effort by sender)
       for (const sub of s.subplots.filter(x => !x.resolved)) {
         const def = findSubplot(sub.id)
         if (!def) continue
@@ -285,7 +325,6 @@ export function App() {
     if (store.season.week < TOTAL_WEEKS) {
       updateStore(s => {
         const completedWeek = s.season.week
-        // Advance AI league table only for league-fixture weeks
         const completedFixture = getFixture(completedWeek, s.season.tier, s.season.cupExited)
         if (completedFixture?.kind === 'league' && completedFixture.leagueIndex !== undefined) {
           s.season.aiTable = advanceAiTable(s.season.aiTable, s.season.tier, completedFixture.leagueIndex, s.seed)
@@ -294,7 +333,6 @@ export function App() {
         s.season.week = nextWeekNumber(s.season.week)
         s.groupChatLog = []
 
-        // Pre-match messages with next opponent name swapped in
         const rng = mulberry32(s.seed + s.season.week * 113)
         const nextFx = getFixture(s.season.week, s.season.tier, s.season.cupExited)
         const oppName = nextFx?.opponent.name ?? 'TBD'
@@ -302,12 +340,15 @@ export function App() {
         MESSAGE_TEMPLATES.preMatch.slice(0, count).forEach(t => {
           s.groupChatLog.push({ sender: t.sender, text: t.text.replace('Anchor Athletic', oppName), time: t.time })
         })
+
         s.player.states.fatigue = Math.max(0, s.player.states.fatigue - 8)
         s.player.states.fitness = Math.min(100, s.player.states.fitness + 3)
         if (s.player.states.form > 0) s.player.states.form = Math.max(0, s.player.states.form - 0.3)
         if (s.player.states.form < 0) s.player.states.form = Math.min(0, s.player.states.form + 0.3)
 
-        // Trigger any subplots whose start week is now
+        applyWeeklyTraitTick(s)
+        applyJobWeeklyTick(s)
+
         const newSubs = subplotsToTriggerThisWeek(s.season.week, s.subplots)
         for (const sub of newSubs) {
           s.subplots.push({ id: sub.id, stage: 0, startedWeek: s.season.week, resolved: false })
@@ -317,7 +358,6 @@ export function App() {
       })
       setCurrentScreen('hub')
     } else {
-      // Season complete: finish the final week's AI table, then go to Complete screen
       updateStore(s => {
         const completedFixture = getFixture(s.season.week, s.season.tier, s.season.cupExited)
         if (completedFixture?.kind === 'league' && completedFixture.leagueIndex !== undefined) {
@@ -337,6 +377,7 @@ export function App() {
     const entry: HallOfFameEntry = {
       name: store.player.name,
       archetype: store.player.archetype,
+      job: store.player.job,
       title,
       date: Date.now(),
       seasons: store.season.number,
@@ -344,6 +385,7 @@ export function App() {
       points: standings.find(r => r.isUs)?.points ?? 0,
       cupWon: store.season.cupWon,
       finalTier: promo.newTier,
+      signatureTrait: pickSignatureTrait(store.player.traits),
     }
     const hof = [...store.hallOfFame, entry]
     const fresh = deepClone(initialSaveState)
@@ -376,7 +418,6 @@ export function App() {
   }
 
   const startNextSeason = () => {
-    // Build promo outcome, capture position, then go to stat growth
     const standings = buildStandings(store.season.aiTable, store.season.tier, store.season.results)
     const position = ourLeaguePosition(standings)
     const promo = resolvePromotionRelegation(position, standings.length, store.season.tier)
@@ -393,7 +434,7 @@ export function App() {
       s.groupChatLog = []
       s.chaosCardHistory = []
       s.subplots = []
-      s.contextModifiers = { oppositionScouted: false, setPieceReady: false }
+      s.contextModifiers = { oppositionScouted: false, setPieceReady: false, hangoverPending: false }
       s.player.states.fatigue = 0
       s.player.states.fitness = 100
       s.player.states.confidence = 55
@@ -442,6 +483,7 @@ export function App() {
               s.player.archetype = archetypeId
               s.player.stats = { ...arch.stats }
               s.player.traits = [...arch.traits]
+              s.player.position = ARCHETYPE_POSITION[archetypeId] ?? s.player.position
             })
           }
           setCurrentScreen('job')
@@ -458,7 +500,7 @@ export function App() {
                 const key = k as StatKey
                 s.player.stats[key] = Math.min(20, s.player.stats[key] + (v ?? 0))
               })
-              s.player.traits.push(jobData.trait)
+              if (!s.player.traits.includes(jobData.trait)) s.player.traits.push(jobData.trait)
             }
             s.season.aiTable = initialTable(s.season.tier)
             s.groupChatLog = []
@@ -487,6 +529,7 @@ export function App() {
           onHall={() => setCurrentScreen('hall')}
           onSquad={() => setCurrentScreen('squad')}
           onTable={() => { setTableCanAdvance(false); setCurrentScreen('table') }}
+          onPlayer={() => setCurrentScreen('player')}
           isDiscord={platform.isDiscord}
         />
       )}
@@ -572,6 +615,13 @@ export function App() {
         />
       )}
 
+      {currentScreen === 'player' && (
+        <PlayerScreen
+          store={store}
+          onBack={() => setCurrentScreen('hub')}
+        />
+      )}
+
       {currentScreen === 'hall' && (
         <HallOfFameScreen
           hallOfFame={store.hallOfFame}
@@ -603,15 +653,15 @@ function deriveGrowthOffers(store: SaveState): StatKey[] {
     .map(([k]) => k)
 
   const weakest = ranked[0]
-  const middle = ranked[3]
-  const archetypeKey: StatKey = store.player.archetype === 'unit'
-    ? 'head'
-    : store.player.archetype === 'winger'
-      ? 'pace'
-      : 'pass'
+  const middle = ranked[Math.floor(ranked.length / 2)]
+  const priority = ARCHETYPE_GROWTH_PRIORITY[store.player.archetype] ?? STAT_KEYS
+  const heroStat = priority.find(k => k !== weakest && k !== middle) ?? priority[0]
 
-  const set = new Set<StatKey>([weakest, middle, archetypeKey])
-  // Pad if collision
+  const set = new Set<StatKey>([weakest, middle, heroStat])
+  for (const k of priority) {
+    if (set.size >= 3) break
+    set.add(k)
+  }
   for (const k of STAT_KEYS) {
     if (set.size >= 3) break
     set.add(k)

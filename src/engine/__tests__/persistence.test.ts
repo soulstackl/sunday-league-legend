@@ -3,7 +3,6 @@ import { saveGame, loadGame, deepClone } from '../../store/persistence'
 import { initialSaveState, SAVE_KEY } from '../../store/initial-state'
 import type { SaveState } from '../../types/game'
 
-// Minimal in-memory localStorage shim for tests
 const store: Record<string, string> = {}
 const localStorageMock = {
   getItem: (key: string) => store[key] ?? null,
@@ -52,11 +51,12 @@ describe('saveGame / loadGame round-trip', () => {
     expect(loadGame()).toBeNull()
   })
 
-  it('preserves hall of fame entries', () => {
+  it('preserves hall of fame entries including job and signatureTrait', () => {
     const state: SaveState = deepClone(initialSaveState)
     state.hallOfFame = [{
       name: 'Smudger',
       archetype: 'winger',
+      job: 'delivery',
       title: 'Pub Hero',
       date: 1000000,
       seasons: 2,
@@ -64,11 +64,14 @@ describe('saveGame / loadGame round-trip', () => {
       points: 24,
       cupWon: false,
       finalTier: 2,
+      signatureTrait: 'Electric Pace',
     }]
     saveGame(state)
     const loaded = loadGame()
     expect(loaded?.hallOfFame.length).toBe(1)
     expect(loaded?.hallOfFame[0].name).toBe('Smudger')
+    expect(loaded?.hallOfFame[0].job).toBe('delivery')
+    expect(loaded?.hallOfFame[0].signatureTrait).toBe('Electric Pace')
   })
 
   it('preserves player stats and states', () => {
@@ -82,9 +85,17 @@ describe('saveGame / loadGame round-trip', () => {
     expect(loaded?.player.states.confidence).toBe(73)
     expect(loaded?.player.traits).toEqual(['Aerial Threat', 'Hold-Up Artist'])
   })
+
+  it('preserves the hangoverPending context modifier', () => {
+    const state: SaveState = deepClone(initialSaveState)
+    state.contextModifiers.hangoverPending = true
+    saveGame(state)
+    const loaded = loadGame()
+    expect(loaded?.contextModifiers.hangoverPending).toBe(true)
+  })
 })
 
-describe('migrate: v1/v2 legacy save recovery', () => {
+describe('migrate: legacy save recovery', () => {
   it('migrates a minimal v1-style save with no traits', () => {
     const legacyData = {
       version: 1,
@@ -99,7 +110,7 @@ describe('migrate: v1/v2 legacy save recovery', () => {
     expect(loaded).not.toBeNull()
     expect(loaded?.player.name).toBe('Gazza')
     expect(loaded?.player.traits).toEqual([])
-    expect(loaded?.version).toBe(3)
+    expect(loaded?.version).toBe(4)
     expect(store[SAVE_KEY]).toBeDefined()
     expect(store['sll_save_v1']).toBeUndefined()
   })
@@ -113,9 +124,41 @@ describe('migrate: v1/v2 legacy save recovery', () => {
     const loaded = loadGame()
     expect(loaded?.player.name).toBe('Chappers')
     expect(loaded?.season.week).toBe(7)
-    expect(loaded?.version).toBe(3)
+    expect(loaded?.version).toBe(4)
     expect(store['sll_save_v2']).toBeUndefined()
     expect(store[SAVE_KEY]).toBeDefined()
+  })
+
+  it('migrates a v3 save and fills in hangoverPending', () => {
+    const v3Data = { ...deepClone(initialSaveState), version: 3 }
+    v3Data.player.name = 'Tangerine Machine'
+    v3Data.contextModifiers = { oppositionScouted: true, setPieceReady: false } as never
+    store['sll_save_v3'] = JSON.stringify(v3Data)
+    const loaded = loadGame()
+    expect(loaded?.version).toBe(4)
+    expect(loaded?.contextModifiers.hangoverPending).toBe(false)
+    expect(loaded?.contextModifiers.oppositionScouted).toBe(true)
+    expect(store['sll_save_v3']).toBeUndefined()
+  })
+
+  it('dedupes traits during migration', () => {
+    const data = deepClone(initialSaveState)
+    data.player.name = 'Stevo'
+    data.player.traits = ['Vocal Leader', 'Engine Room', 'Vocal Leader']
+    store[SAVE_KEY] = JSON.stringify(data)
+    const loaded = loadGame()
+    expect(loaded?.player.traits).toEqual(['Vocal Leader', 'Engine Room'])
+  })
+
+  it('defaults missing job and signatureTrait on legacy hall of fame entries', () => {
+    const data = deepClone(initialSaveState)
+    data.player.name = 'Bazza'
+    const legacyEntry = { name: 'Smudger', archetype: 'unit', title: 'Pub Hero', date: 1, seasons: 1, goals: 5, points: 12, cupWon: false, finalTier: 3 }
+    data.hallOfFame = [legacyEntry as never]
+    store[SAVE_KEY] = JSON.stringify(data)
+    const loaded = loadGame()
+    expect(loaded?.hallOfFame[0].job).toBe('')
+    expect(loaded?.hallOfFame[0].signatureTrait).toBeUndefined()
   })
 })
 

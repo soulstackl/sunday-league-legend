@@ -14,19 +14,35 @@ export function saveGame(state: SaveState): void {
   }
 }
 
+function uniqueStrings(values: unknown): string[] | null {
+  if (!Array.isArray(values)) return null
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const v of values) {
+    if (typeof v !== 'string') continue
+    if (seen.has(v)) continue
+    seen.add(v)
+    out.push(v)
+  }
+  return out
+}
+
 function migrate(raw: unknown): SaveState | null {
   if (!raw || typeof raw !== 'object') return null
   const data = raw as Partial<SaveState> & Record<string, unknown>
 
   const base = deepClone(initialSaveState)
-  base.version = 3
+  base.version = 4
 
-  if (data.player) base.player = {
-    ...base.player,
-    ...data.player,
-    stats: { ...base.player.stats, ...(data.player.stats ?? {}) },
-    states: { ...base.player.states, ...(data.player.states ?? {}) },
-    traits: Array.isArray(data.player.traits) ? data.player.traits : base.player.traits,
+  if (data.player) {
+    const dedupedTraits = uniqueStrings(data.player.traits)
+    base.player = {
+      ...base.player,
+      ...data.player,
+      stats: { ...base.player.stats, ...(data.player.stats ?? {}) },
+      states: { ...base.player.states, ...(data.player.states ?? {}) },
+      traits: dedupedTraits ?? base.player.traits,
+    }
   }
   if (typeof data.seed === 'number') base.seed = data.seed
   if (typeof data.club === 'string') base.club = data.club
@@ -67,6 +83,7 @@ function migrate(raw: unknown): SaveState | null {
     base.hallOfFame = (data.hallOfFame as Partial<SaveState['hallOfFame'][number]>[]).map(h => ({
       name: h.name ?? 'Unknown',
       archetype: h.archetype ?? '',
+      job: h.job ?? '',
       title: h.title ?? 'Local Legend',
       date: h.date ?? Date.now(),
       seasons: h.seasons ?? 1,
@@ -74,6 +91,7 @@ function migrate(raw: unknown): SaveState | null {
       points: h.points ?? 0,
       cupWon: h.cupWon ?? false,
       finalTier: (h.finalTier ?? 3) as 1 | 2 | 3,
+      signatureTrait: h.signatureTrait,
     }))
   }
   if (data.settings) {
@@ -87,8 +105,9 @@ function migrate(raw: unknown): SaveState | null {
   if (Array.isArray((data as { subplots?: SaveState['subplots'] }).subplots)) {
     base.subplots = (data as { subplots: SaveState['subplots'] }).subplots
   }
-  if ((data as { contextModifiers?: SaveState['contextModifiers'] }).contextModifiers) {
-    base.contextModifiers = (data as { contextModifiers: SaveState['contextModifiers'] }).contextModifiers
+  const persistedCtx = (data as { contextModifiers?: Partial<SaveState['contextModifiers']> }).contextModifiers
+  if (persistedCtx) {
+    base.contextModifiers = { ...base.contextModifiers, ...persistedCtx }
   }
 
   return base

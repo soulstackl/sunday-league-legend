@@ -226,6 +226,7 @@ export interface SubplotProgress {
 export interface ContextModifiers {
   oppositionScouted: boolean
   setPieceReady: boolean
+  hangoverPending: boolean
 }
 
 export interface GameSettings {
@@ -238,6 +239,7 @@ export interface GameSettings {
 export interface HallOfFameEntry {
   name: string
   archetype: string
+  job: string
   title: string
   date: number
   seasons: number
@@ -245,6 +247,7 @@ export interface HallOfFameEntry {
   points: number
   cupWon: boolean
   finalTier: 1 | 2 | 3
+  signatureTrait?: string
 }
 
 export interface SaveState {

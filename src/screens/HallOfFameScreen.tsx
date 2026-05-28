@@ -3,6 +3,7 @@ import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Card } from '../components/shared/Card'
 import { TIER_NAMES } from '../data/opponents'
 import { ARCHETYPES } from '../data/archetypes'
+import { JOBS } from '../data/jobs'
 import type { HallOfFameEntry } from '../types/game'
 
 interface HallOfFameScreenProps {
@@ -25,16 +26,22 @@ export function HallOfFameScreen({ hallOfFame, onBack }: HallOfFameScreenProps) 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {sorted.map((career, i) => {
-          const archetype = ARCHETYPES.find(a => a.id === career.archetype)?.name ?? career.archetype
+          const archetype = ARCHETYPES.find(a => a.id === career.archetype)?.name ?? (career.archetype || 'Unknown')
+          const job = career.job ? (JOBS.find(j => j.id === career.job)?.name ?? career.job) : null
           return (
             <Card key={i}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>{career.name}</span>
                 <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 700 }}>{career.title}</span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', fontFamily: 'var(--font-mono)' }}>
-                {archetype} · {career.seasons} season{career.seasons === 1 ? '' : 's'} · {TIER_NAMES[career.finalTier]}
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontFamily: 'var(--font-mono)' }}>
+                {archetype}{job ? ' · ' + job : ''} · {career.seasons} season{career.seasons === 1 ? '' : 's'} · {TIER_NAMES[career.finalTier]}
               </div>
+              {career.signatureTrait && (
+                <div style={{ display: 'inline-block', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent)', background: 'var(--accent-bg)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, marginBottom: '8px' }}>
+                  {career.signatureTrait}
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-faint)' }}>
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{career.goals} goals · {career.points} pts</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

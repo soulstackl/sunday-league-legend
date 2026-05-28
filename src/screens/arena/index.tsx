@@ -4,7 +4,20 @@ import type { SaveState, ChaosCard, MomentResult, MatchStats } from '../../types
 import type { Fixture } from '../../engine/schedule'
 import { ScreenContainer } from '../../components/shared/ScreenContainer'
 import { getChaosModifiers } from '../../engine/chaos'
+import {
+  getMomentAccuracyBonus,
+  getExtraMatchMoments,
+  getTackleEngineBonus,
+  getPaceRecoveryBonus,
+  type MomentType,
+} from '../../engine/traits'
 import { AudioManager } from '../../audio/AudioManager'
+import type { ArenaScenario } from '../../data/arenaScenarios'
+import { buildScenarioSequence } from '../../engine/arenaSelection'
+import {
+  applyScenarioSetup, buildWallActors,
+  getPhysicsType, commentaryFor, tuningMul, tuningFlag,
+} from './scenarioAdapter'
 
 export type ArenaMatchStats = MatchStats
 
@@ -17,32 +30,6 @@ interface ArenaScreenProps {
 
 const statBoost = (stat: number, neutral = 10): number =>
   Math.max(-0.4, Math.min(0.5, (stat - neutral) / 20))
-
-const MOMENT_INFO: Record<string, { title: string; instruction: string; stat: string; statLabel: string }> = {
-  shot:     { title: 'OPEN PLAY STRIKE',    instruction: 'Drag back, curve the path for spin. Release to shoot.',       stat: 'strike', statLabel: 'STRIKE' },
-  pass:     { title: 'CLINICAL PASS',       instruction: 'Drag toward your man. Curve the path to bend the ball.',      stat: 'pass',   statLabel: 'PASS' },
-  touch:    { title: 'FIRST TOUCH',         instruction: 'Release when the needle hits the green zone.',                 stat: 'touch',  statLabel: 'TOUCH' },
-  tackle:   { title: 'LAST-MAN TACKLE',     instruction: 'Swipe when the timing circle turns green.',                   stat: 'engine', statLabel: 'ENGINE' },
-  header:   { title: 'AERIAL THREAT',       instruction: 'Drag when the ball enters the heading zone. Aim for goal.',   stat: 'head',   statLabel: 'HEAD' },
-  penalty:  { title: 'SPOT KICK',           instruction: 'Pick your corner. Curve for finesse.',                        stat: 'strike', statLabel: 'STRIKE' },
-  freekick: { title: 'DEAD-BALL SPECIAL',   instruction: 'Bend it into the corner. Watch the wall.',                    stat: 'strike', statLabel: 'STRIKE' },
-  corner:   { title: 'IN THE MIXER',        instruction: 'Whip it in. Outswing or inswing.',                            stat: 'pass',   statLabel: 'PASS' },
-}
-
-const GOAL_LINES: Record<string, string[]> = {
-  topcorner: ['TOP BINS! Absolute screamer!', 'Top corner, keeper had no chance!', 'Postage stamp! What a finish!'],
-  chip:      ['Chipped him! Audacious!', 'Dinked over the keeper, class!', 'Coolly chipped, pick that out!'],
-  tucked:    ['Tucked away! Cold-blooded.', 'Slotted neatly inside the post.', 'Side-footed home like a pro.'],
-  rising:    ['Rising rocket, back of the net!', 'Lashed it home off the underside!', 'Power finish! Get in!'],
-  standard:  ['Pick that out!', 'Get in! Back of the net.', 'Goal, well done lad.', 'Worldie. Pure worldie.'],
-}
-
-const NEARMISS_LINES = [
-  'Inches wide of the post!',
-  "Crowd ooh'd, that whistled past the post!",
-  "So close, keeper's heart skipped a beat.",
-  'Curled just over the bar!',
-]
 
 type ShotVariant = 'chip' | 'driven' | 'finesse' | 'lofted' | 'standard'
 
@@ -109,6 +96,36 @@ const VARIANT_VY: Record<ShotVariant, number>       = { chip: 0.4, driven: 1.0, 
 const VARIANT_POWER_CAP: Record<ShotVariant, number> = { chip: 0.65, driven: 1.15, finesse: 0.9, lofted: 1.0, standard: 1.0 }
 const VARIANT_CURL_MULT: Record<ShotVariant, number> = { chip: 0, driven: 0.5, finesse: 1.0, lofted: 0.7, standard: 1.0 }
 
+type MomentSlot = MomentType[]
+const ARCHETYPE_MOMENT_SLOTS: Record<string, MomentSlot[]> = {
+  unit:      [['header', 'shot', 'header'],  ['touch', 'pass', 'pass'],         ['tackle', 'header', 'tackle'], ['penalty', 'header', 'shot', 'corner']],
+  winger:    [['shot', 'touch', 'shot'],     ['pass', 'corner', 'corner', 'touch'], ['touch', 'tackle'],         ['shot', 'corner', 'freekick']],
+  organiser: [['shot', 'pass', 'pass'],      ['pass', 'pass', 'touch', 'corner'],   ['tackle', 'pass'],          ['freekick', 'pass', 'shot']],
+}
+const DEFAULT_MOMENT_SLOTS: MomentSlot[] = [
+  ['shot', 'header'],
+  ['pass', 'touch', 'corner'],
+  ['tackle', 'touch'],
+  ['penalty', 'freekick', 'shot', 'corner'],
+]
+const CUP_BONUS_SLOT: MomentSlot = ['shot', 'header', 'freekick']
+const EXTRA_MOMENT_SLOT: MomentSlot = ['shot', 'pass', 'touch', 'corner', 'freekick']
+const MOMENT_POOL: MomentType[] = ['shot', 'pass', 'touch', 'tackle', 'header', 'penalty', 'freekick', 'corner']
+
+function buildMomentSequence(kind: 'league' | 'cup', archetype: string, extraMoments: number): MomentType[] {
+  const pickOne = (arr: MomentSlot) => arr[Math.floor(Math.random() * arr.length)]
+  const slots = ARCHETYPE_MOMENT_SLOTS[archetype] ?? DEFAULT_MOMENT_SLOTS
+  const seq = slots.map(pickOne)
+  if (kind === 'cup') seq.push(pickOne(CUP_BONUS_SLOT))
+  for (let i = 0; i < extraMoments; i++) seq.push(pickOne(EXTRA_MOMENT_SLOT))
+  const seen = new Set<MomentType>()
+  return seq.map(m => {
+    if (!seen.has(m)) { seen.add(m); return m }
+    const alt = MOMENT_POOL.find(p => !seen.has(p)) ?? m
+    seen.add(alt); return alt
+  })
+}
+
 export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: ArenaScreenProps) {
   const opponent = fixture.opponent
   const playerStats = store.player.stats
@@ -174,30 +191,33 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
   const tackleTimingRef = useRef(0)
   const tackleTimingActiveRef = useRef(false)
+  const tackleStartMsRef = useRef(0)
+  const tackleFillDurationMsRef = useRef(2400)
+  const tackleArrivalMsRef = useRef(2800)
 
   const penaltyHistoryRef = useRef<number[]>([])
   const wallJumpedRef = useRef(false)
 
-  const totalMoments = fixture.kind === 'cup' ? 5 : 4
-  const [matchMoments] = useState<string[]>(() => {
-    const pickOne = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
-    const seq = [
-      pickOne(['shot', 'header']),
-      pickOne(['pass', 'touch', 'corner']),
-      pickOne(['tackle', 'touch']),
-      pickOne(['penalty', 'freekick', 'shot', 'corner']),
-    ]
-    if (fixture.kind === 'cup') seq.push(pickOne(['shot', 'header', 'freekick']))
-    const pool = ['shot', 'pass', 'touch', 'tackle', 'header', 'penalty', 'freekick', 'corner']
-    const seen = new Set<string>()
-    return seq.map(m => {
-      if (!seen.has(m)) { seen.add(m); return m }
-      const alt = pool.find(p => !seen.has(p)) ?? m
-      seen.add(alt); return alt
+  const playerTraits = store.player.traits
+  const [scenarioSequence] = useState<ArenaScenario[]>(() => {
+    const base = buildScenarioSequence({
+      player: store.player,
+      fixture,
+      ctx,
+      activeCards,
+      momentum: 50,
+      prevTypes: [],
     })
+    const legacy = buildMomentSequence(fixture.kind, store.player.archetype, getExtraMatchMoments(playerTraits))
+    if (base.length < legacy.length) {
+      // not enough scenarios generated; reuse common ones to backfill
+      while (base.length < legacy.length) base.push(base[base.length - 1] || base[0])
+    }
+    return base.slice(0, legacy.length)
   })
-
-  const activeMomentType = matchMoments[Math.min(momentIndex, matchMoments.length - 1)]
+  const totalMoments = scenarioSequence.length
+  const activeScenario = scenarioSequence[Math.min(momentIndex, scenarioSequence.length - 1)]
+  const activeMomentType: MomentType = getPhysicsType(activeScenario)
 
   const dragStart = useRef<{ x: number; y: number } | null>(null)
   const dragCurrent = useRef<{ x: number; y: number } | null>(null)
@@ -284,6 +304,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     wallJumpedRef.current = false
     tackleTimingActiveRef.current = false
     tackleTimingRef.current = 0
+    tackleStartMsRef.current = 0
 
     ball.current = {
       x: 200, y: 320, z: 0,
@@ -312,73 +333,44 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       committed: false,
     }
 
-    if (activeMomentType === 'shot') {
-      ball.current.x = 150 + Math.random() * 100
-      ball.current.y = 280 + Math.random() * 60
-      fieldNPCs.current = [
-        { x: (Math.random() < 0.5 ? 165 : 235), y: 120, type: 'defender', radius: 15, vx: (Math.random() - 0.5) * 1.5 },
-      ]
-    } else if (activeMomentType === 'pass') {
-      ball.current.x = 200; ball.current.y = 350
-      const gavX = 70 + Math.random() * 40
-      const callX = 270 + Math.random() * 40
-      fieldNPCs.current = [
-        { x: gavX,  y: 130 + Math.random() * 40, type: 'teammate', name: 'Gav' },
-        { x: callX, y: 160 + Math.random() * 40, type: 'teammate', name: 'Callum' },
-        { x: 170 + Math.random() * 60, y: 200 + Math.random() * 30, type: 'defender', radius: 15, vx: (Math.random() - 0.5) * 1 },
-        { x: 220 + Math.random() * 40, y: 170 + Math.random() * 30, type: 'defender', radius: 15, vx: (Math.random() - 0.5) * 1 },
-      ]
-    } else if (activeMomentType === 'touch') {
-      const fromLeft = Math.random() < 0.5
-      ball.current.x = fromLeft ? 60 : 340
-      ball.current.y = 200
-      ball.current.z = 20
-      ball.current.active = true
-      ball.current.vx = fromLeft ? 2.8 : -2.8
-      ball.current.vy = 2.5
-      ball.current.vz = 1.5
+    // Drive setup from the active scenario rather than hard-coded per-type branches.
+    const resolved = applyScenarioSetup(activeScenario)
+    Object.assign(ball.current, resolved.ball)
+
+    let actors = resolved.actors
+    if (resolved.wall) actors = [...actors, ...buildWallActors(resolved.wall)]
+    fieldNPCs.current = actors
+
+    // Apply keeper tuning from scenario.
+    keeper.current.reach = keeperProfile.reach * tuningMul(activeScenario, 'keeperReachMul', 1)
+    keeper.current.reaction = keeperProfile.reaction * tuningMul(activeScenario, 'keeperReactionMul', 1)
+    keeper.current.readSkill = Math.max(0.05, Math.min(0.99, keeperProfile.readSkill * tuningMul(activeScenario, 'keeperReadMul', 1)))
+
+    if (activeMomentType === 'touch') {
+      // Touch needle uses scenario base width but stat still drives the green band size.
       const touchStatMod = statBoost(playerStats.touch)
-      const winWidth = 0.20 + touchStatMod * 0.15
+      const paceTouchMod = statBoost(playerStats.pace) * 0.05
+      const base = 0.20 * tuningMul(activeScenario, 'touchWindowMul', 1)
+      const winWidth = base + touchStatMod * 0.15 + paceTouchMod
       const centre = 0.5 + (Math.random() - 0.5) * 0.2
       touchWindowRef.current = { lo: centre - winWidth / 2, hi: centre + winWidth / 2 }
       touchNeedleRef.current = 0
       touchNeedleDirRef.current = 1
-      touchNeedleSpeedRef.current = 0.009 + Math.abs(ball.current.vx) * 0.0015
-      fieldNPCs.current = []
+      const speedBase = 0.009 + Math.abs(ball.current.vx) * 0.0015
+      touchNeedleSpeedRef.current = speedBase * tuningMul(activeScenario, 'touchSpeedMul', 1)
     } else if (activeMomentType === 'tackle') {
       ball.current.active = false
-      const attackerSpeed = 3.0 + (opponent.difficulty - 5) * 0.15
-      fieldNPCs.current = [
-        { x: 140 + Math.random() * 120, y: -20, vy: attackerSpeed, type: 'attacker', hasBall: true },
-      ]
+      const engineMod = statBoost(playerStats.engine)
+      const speedMul = tuningMul(activeScenario, 'tackleTimingSpeedMul', 1)
+      tackleFillDurationMsRef.current = (2400 - engineMod * 400) / speedMul
+      tackleArrivalMsRef.current = 2800 - (opponent.difficulty - 5) * 100
       tackleTimingActiveRef.current = true
       tackleTimingRef.current = 0
-    } else if (activeMomentType === 'header') {
-      ball.current.x = 200; ball.current.y = 100; ball.current.z = 130
-      ball.current.active = true; ball.current.vz = -1.2; ball.current.vy = 0.8
-      fieldNPCs.current = []
+      tackleStartMsRef.current = 0
     } else if (activeMomentType === 'penalty') {
-      ball.current.x = 200; ball.current.y = 250
-      fieldNPCs.current = []
-      keeper.current.reach = keeperProfile.reach + 8
-    } else if (activeMomentType === 'freekick') {
-      ball.current.x = 200; ball.current.y = 290
-      fieldNPCs.current = [
-        { x: 160, y: 150, type: 'defender', radius: 15, vx: 0, z: 0, jumpVz: 0, jumping: false },
-        { x: 195, y: 150, type: 'defender', radius: 15, vx: 0, z: 0, jumpVz: 0, jumping: false },
-        { x: 230, y: 150, type: 'defender', radius: 15, vx: 0, z: 0, jumpVz: 0, jumping: false },
-      ]
-    } else if (activeMomentType === 'corner') {
-      const fromLeft = Math.random() < 0.5
-      ball.current.x = fromLeft ? 20 : 380; ball.current.y = 40
-      fieldNPCs.current = [
-        { x: 180, y: 110, type: 'teammate', name: 'Gav' },
-        { x: 220, y: 145, type: 'teammate', name: 'Big Taz' },
-        { x: 150, y: 130, type: 'defender', radius: 15, vx: 0 },
-        { x: 250, y: 130, type: 'defender', radius: 15, vx: 0 },
-      ]
+      keeper.current.reach += 8
     }
-  }, [activeMomentType, clearMomentTimeouts, keeperProfile, opponent.difficulty, playerStats.touch])
+  }, [activeScenario, activeMomentType, clearMomentTimeouts, keeperProfile, opponent.difficulty, playerStats.touch, playerStats.pace, playerStats.engine])
 
   useEffect(() => {
     resetSimulation()
@@ -481,12 +473,13 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       else AudioManager.playMiss()
     }
 
-    if (activeMomentType === 'tackle' && outcome === 'SUCCESS') {
+    if (activeMomentType === 'tackle' && (outcome === 'SUCCESS' || outcome === 'RECOVERY')) {
       setMatchStats(s => ({ ...s, tackleSuccess: s.tackleSuccess + 1 }))
     }
 
     let clampedValue = 0.2
     if (['GOAL', 'TOP CORNER', 'CHIPPED HIM', 'TUCKED AWAY', 'BANGER', 'SUCCESS'].includes(outcome)) clampedValue = 1
+    else if (outcome === 'RECOVERY') clampedValue = 0.8
     else if (['WOODWORK', 'CROSSBAR'].includes(outcome)) clampedValue = 0.55
     else if (['NEAR MISS', 'SAVED'].includes(outcome)) clampedValue = 0.4
 
@@ -513,13 +506,18 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     const relevantStat = (playerStats as any)[info.stat] || 10
     const statMod = statBoost(relevantStat)
     const vibesMod = statBoost(playerStats.vibes || 10) * 0.5
+    const paceMomentTypes: MomentType[] = ['shot', 'penalty', 'freekick', 'header', 'corner']
+    const paceMod = paceMomentTypes.includes(activeMomentType as MomentType)
+      ? statBoost(playerStats.pace || 10) * 0.25
+      : 0
+    const traitBonus = getMomentAccuracyBonus(playerTraits, activeMomentType as MomentType)
     const momentumBoost = (momentum - 50) / 500
     const energyPenalty = (100 - energy) / 500
     const chaosMods = getChaosModifiers(activeCards)
     const scoutBonus = ctx.oppositionScouted ? 0.05 : 0
     const setPieceBonus = ctx.setPieceReady && (activeMomentType === 'penalty' || activeMomentType === 'freekick') ? 0.08 : 0
     const sensitivity = store.settings.inputSensitivity === 'high' ? 1.08 : store.settings.inputSensitivity === 'low' ? 0.94 : 1
-    const effectiveAccuracy = Math.max(0, Math.min(1.15, (accuracy + statMod + momentumBoost + vibesMod - energyPenalty - chaosMods.accuracyPenalty + scoutBonus + setPieceBonus) * sensitivity))
+    const effectiveAccuracy = Math.max(0, Math.min(1.15, (accuracy + statMod + momentumBoost + vibesMod + paceMod + traitBonus - energyPenalty - chaosMods.accuracyPenalty + scoutBonus + setPieceBonus) * sensitivity))
     const effectivePower = Math.max(0.2, Math.min(1.15, (power + statMod * 0.4 - chaosMods.powerPenalty + setPieceBonus * 0.5) * sensitivity))
     if (activeMomentType === 'tackle') {
       setEnergy(e => Math.max(0, e - (10 - Math.round(statBoost(playerStats.graft) * 10))))
@@ -529,20 +527,32 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         return
       }
       const tr = tackleTimingRef.current
-      const timingOk = tr >= 0.56 && tr <= 0.80
+      const timingOk = tr >= 0.55 && tr <= 0.92
       const aimAngle = Math.atan2(attacker.y - 320, attacker.x - 200)
       const angularAlignment = Math.cos(angle - aimAngle)
-      const dirTolerance = 0.22 + statBoost(playerStats.graft) * 0.2
+      const tackleTraitBonus = getTackleEngineBonus(playerTraits)
+      const paceTackleBonus = statBoost(playerStats.pace || 10) * 0.1
+      const dirTolerance = 0.22 + statBoost(playerStats.graft) * 0.2 + tackleTraitBonus + paceTackleBonus
       const aimOk = angularAlignment > (0.3 - dirTolerance)
       if (timingOk && aimOk) {
         AudioManager.playKick('strike')
         navigator.vibrate?.([25])
         if (!reducedMotion) { screenShakeRef.current = 6; hitStopRef.current = 4 }
         resolveSimulationOutcome({ outcome: 'SUCCESS', details: 'Crunching tackle, ball won cleanly.' })
-      } else if (tr < 0.56) {
+        return
+      }
+      const recoveryChance = Math.max(0, statBoost(playerStats.pace || 10) * 0.4 + getPaceRecoveryBonus(playerTraits))
+      if (Math.random() < recoveryChance) {
+        AudioManager.playKick('strike')
+        navigator.vibrate?.([15])
+        if (!reducedMotion) screenShakeRef.current = 4
+        resolveSimulationOutcome({ outcome: 'RECOVERY', details: 'Beaten for the first yard, but your pace dragged you back to nick it clean.' })
+        return
+      }
+      if (tr < 0.55) {
         navigator.vibrate?.([8])
         resolveSimulationOutcome({ outcome: 'EARLY', details: "Dived in too early. He's gone past you." })
-      } else if (tr > 0.80) {
+      } else if (tr > 0.92) {
         navigator.vibrate?.([8])
         resolveSimulationOutcome({ outcome: 'LATE', details: "A split-second late, he's away." })
       } else {
@@ -680,7 +690,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }, baseDelay + 250)
     }
-  }, [activeMomentType, activeCards, energy, momentum, playerStats, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, reducedMotion])
+  }, [activeMomentType, activeCards, energy, momentum, playerStats, playerTraits, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, reducedMotion])
 
   const updateSimulation = useCallback(() => {
     const b = ball.current
@@ -691,6 +701,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     if (screenShakeRef.current > 0) screenShakeRef.current = Math.max(0, screenShakeRef.current - 0.5)
     if (goalFlashRef.current > 0) goalFlashRef.current = Math.max(0, goalFlashRef.current - 0.04)
     if (timeScaleRef.current < 1) timeScaleRef.current = Math.min(1, timeScaleRef.current + 0.015)
+
+    if (readyPhaseRef.current !== 'live') return
 
     const ts = timeScaleRef.current
 
@@ -711,8 +723,17 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     }
 
     if (activeMomentType === 'tackle' && tackleTimingActiveRef.current && !simulationFinished.current) {
-      const engineMod = statBoost(playerStats.engine)
-      tackleTimingRef.current = Math.min(1, tackleTimingRef.current + (0.012 + engineMod * 0.004) * ts)
+      if (tackleStartMsRef.current === 0) tackleStartMsRef.current = Date.now()
+      const elapsedMs = Date.now() - tackleStartMsRef.current
+      tackleTimingRef.current = Math.min(1, elapsedMs / tackleFillDurationMsRef.current)
+      const attacker = fieldNPCs.current.find((n: any) => n.type === 'attacker')
+      if (attacker) {
+        attacker.y = -20 + (350 / tackleArrivalMsRef.current) * elapsedMs
+        if (attacker.y > 330) {
+          resolveSimulationOutcome({ outcome: 'BEATEN', details: "He's gone past you. Absolute embarrassment." })
+          return
+        }
+      }
     }
 
     for (let i = postParticles.current.length - 1; i >= 0; i--) {
@@ -921,13 +942,15 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
           }
         }
       } else if (n.type === 'attacker') {
-        n.y += n.vy * ts
-        if (n.y > 330) {
-          resolveSimulationOutcome({ outcome: 'BEATEN', details: "He's gone past you. Absolute embarrassment." })
+        if (activeMomentType !== 'tackle' && typeof n.vy === 'number') {
+          n.y += n.vy * ts
+          if (n.y > 330) {
+            resolveSimulationOutcome({ outcome: 'BEATEN', details: "He's gone past you. Absolute embarrassment." })
+          }
         }
       }
     })
-  }, [activeMomentType, pitch, weather, resolveSimulationOutcome, reducedMotion, keeperProfile.readSkill, playerStats.engine])
+  }, [activeMomentType, pitch, weather, resolveSimulationOutcome, reducedMotion, keeperProfile.readSkill])
 
   const drawHumanoid = (
     c: CanvasRenderingContext2D,
@@ -1104,7 +1127,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       if (n.type === 'attacker') {
         const tr = tackleTimingRef.current
         const ringRadius = 20 + tr * 60
-        const ringColor = tr < 0.45 ? '#9ca3af' : tr < 0.56 ? '#F59E0B' : tr < 0.80 ? '#16A34A' : '#DC2626'
+        const ringColor = tr < 0.42 ? '#9ca3af' : tr < 0.55 ? '#F59E0B' : tr < 0.92 ? '#16A34A' : '#DC2626'
         c.strokeStyle = ringColor; c.globalAlpha = tr < 0.50 ? 0.5 : 0.9; c.lineWidth = 3
         c.beginPath(); c.arc(n.x, n.y, ringRadius, 0, Math.PI * 2); c.stroke()
         c.globalAlpha = 1.0

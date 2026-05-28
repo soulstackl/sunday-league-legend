@@ -89,7 +89,9 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
                 borderRadius: '12px',
                 padding: '12px 14px',
                 cursor: 'pointer',
-                transition: 'border-color 0.15s, background 0.15s',
+                transition: 'border-color 0.15s, background 0.15s, transform 0.15s',
+                transform: isSel ? 'translateY(-1px)' : 'none',
+                boxShadow: isSel ? '0 6px 18px rgba(124,58,237,0.18)' : 'none',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>

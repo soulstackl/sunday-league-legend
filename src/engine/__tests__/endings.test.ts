@@ -88,4 +88,37 @@ describe('resolveCareerEnding', () => {
     expect(ending.title.length).toBeGreaterThan(0)
     expect(ending.text.length).toBeGreaterThan(0)
   })
+
+  it('returns aerial-titan for a Unit with elite head and goals', () => {
+    const store = makeStore()
+    store.player.archetype = 'unit'
+    store.player.stats.head = 18
+    for (let i = 0; i < 4; i++) {
+      store.season.results.push({
+        week: i + 1,
+        competition: 'league',
+        ourGoals: 1,
+        theirGoals: 0,
+        rating: 7,
+        opponentId: `opp-${i}`,
+        stats: { shots: 2, goals: 1, passes: 5, passSuccess: 4, tackles: 1, tackleSuccess: 1 },
+      })
+    }
+    expect(resolveCareerEnding(store).id).toBe('aerial-titan')
+  })
+
+  it('returns gaffer-in-waiting for an Organiser with high trust and passing', () => {
+    const store = makeStore()
+    store.player.archetype = 'organiser'
+    store.player.states.managerTrust = 90
+    store.player.stats.pass = 17
+    expect(resolveCareerEnding(store).id).toBe('gaffer-in-waiting')
+  })
+
+  it('returns local-hero for a Builder with two seasons under their belt', () => {
+    const store = makeStore()
+    store.player.job = 'builder'
+    store.season.number = 2
+    expect(resolveCareerEnding(store).id).toBe('local-hero')
+  })
 })

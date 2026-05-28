@@ -1,6 +1,5 @@
 import { Trophy, Settings } from 'lucide-react'
 import { Badge } from '../components/shared/Badge'
-import { ThemeToggle } from '../components/shared/ThemeToggle'
 
 interface TitleScreenProps {
   onNew: () => void
@@ -13,9 +12,6 @@ interface TitleScreenProps {
 export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: TitleScreenProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px 24px', textAlign: 'center', gap: '0', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
-        <ThemeToggle />
-      </div>
       <div style={{ animation: 'bounce 2.5s infinite', marginBottom: '24px' }}>
         <Badge size={100} />
       </div>

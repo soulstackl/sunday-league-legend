@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
-import { ThemeToggle } from '../components/shared/ThemeToggle'
 import type { SaveState, GameSettings } from '../types/game'
 
 interface SettingsScreenProps {
@@ -88,10 +87,7 @@ export function SettingsScreen({ store, onSaveSettings, onBack, onDeleteSave }: 
     <ScreenContainer style={{ overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>Settings</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <ThemeToggle />
-          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '6px', fontFamily: 'var(--font-ui)' }}>Done</button>
-        </div>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '6px', fontFamily: 'var(--font-ui)' }}>Done</button>
       </div>
 
       {/* Toggles */}

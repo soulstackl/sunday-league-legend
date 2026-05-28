@@ -14,9 +14,12 @@ export function ArchetypeScreen({ onNext }: ArchetypeScreenProps) {
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, marginBottom: '4px', color: 'var(--text)' }}>Select Your Archetype</h2>
       <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '18px' }}>Defines your playing style and starting stats.</p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
         {ARCHETYPES.map(arch => {
           const isSel = selected === arch.id
+          const entries = Object.entries(arch.stats) as [string, number][]
+          const sorted = [...entries].sort((a, b) => b[1] - a[1])
+          const topKeys = new Set(sorted.slice(0, 3).map(([k]) => k))
           return (
             <div
               key={arch.id}
@@ -30,25 +33,54 @@ export function ArchetypeScreen({ onNext }: ArchetypeScreenProps) {
                 background: isSel ? 'var(--surface-raised)' : 'var(--card-bg)',
                 border: isSel ? '1px solid var(--accent)' : '1px solid var(--border)',
                 borderRadius: '14px',
-                padding: '14px',
+                padding: '16px',
                 cursor: 'pointer',
-                transition: 'border-color 0.15s, background 0.15s',
+                transition: 'border-color 0.15s, background 0.15s, transform 0.15s',
+                transform: isSel ? 'translateY(-1px)' : 'none',
+                boxShadow: isSel ? '0 6px 18px rgba(124,58,237,0.18)' : 'none',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, color: isSel ? 'var(--accent)' : 'var(--text)' }}>{arch.name}</span>
-                <span style={{ fontSize: '11px', background: isSel ? 'var(--accent-bg)' : 'var(--surface)', color: isSel ? 'var(--accent)' : 'var(--text-muted)', padding: '3px 8px', borderRadius: '20px', fontWeight: 600, border: '1px solid var(--border)' }}>
-                  {arch.traits.join(' / ')}
-                </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px', gap: '10px' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: isSel ? 'var(--accent)' : 'var(--text)', lineHeight: 1.1 }}>{arch.name}</span>
               </div>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.4' }}>{arch.description}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', fontFamily: 'var(--font-mono)', fontSize: '10px', textAlign: 'center' }}>
-                {Object.entries(arch.stats).map(([k, v]) => (
-                  <div key={k} style={{ background: 'var(--surface)', padding: '5px 4px', borderRadius: '6px' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '9px', letterSpacing: '0.04em' }}>{k.toUpperCase()}</div>
-                    <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: 700 }}>{v as number}</div>
-                  </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                {arch.traits.map(t => (
+                  <span
+                    key={t}
+                    style={{
+                      fontSize: '10px',
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      background: isSel ? 'var(--accent-bg-strong)' : 'var(--surface)',
+                      color: isSel ? 'var(--accent)' : 'var(--text-muted)',
+                      padding: '3px 9px',
+                      borderRadius: '20px',
+                      fontWeight: 700,
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    {t}
+                  </span>
                 ))}
+              </div>
+
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: '1.45' }}>{arch.description}</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '14px', rowGap: '7px' }}>
+                {entries.map(([k, v]) => {
+                  const isTop = topKeys.has(k)
+                  const pct = Math.min(100, (v / 20) * 100)
+                  return (
+                    <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      <span style={{ width: '42px', fontSize: '9.5px', fontWeight: 700, color: isTop ? 'var(--accent)' : 'var(--text-muted)', letterSpacing: '0.06em' }}>{k.toUpperCase()}</span>
+                      <div style={{ flex: 1, height: '5px', background: 'var(--surface)', borderRadius: '3px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: isTop ? 'var(--accent)' : 'var(--text-faint)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                      </div>
+                      <span style={{ width: '18px', fontSize: '12px', fontWeight: 700, color: isTop ? 'var(--accent)' : 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )

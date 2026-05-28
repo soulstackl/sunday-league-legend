@@ -21,7 +21,7 @@ export function NameScreen({ onNext }: NameScreenProps) {
         onChange={(e) => setName(e.target.value)}
         placeholder="e.g. Gazza"
         maxLength={18}
-        style={{ width: '100%', padding: '16px', fontSize: '18px', border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '16px', fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)' }}
+        style={{ width: '100%', padding: '16px', fontSize: '18px', border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '16px', fontFamily: 'var(--font-ui)', background: 'var(--surface)', color: 'var(--text)' }}
       />
 
       <div style={{ marginBottom: 'auto' }}>
@@ -42,7 +42,7 @@ export function NameScreen({ onNext }: NameScreenProps) {
 
       <button
         disabled={!name.trim()}
-        onClick={() => onNext(name)}
+        onClick={() => onNext(name.trim())}
         style={{
           width: '100%', padding: '16px',
           background: name.trim() ? 'var(--btn-bg)' : 'var(--surface-raised)',
