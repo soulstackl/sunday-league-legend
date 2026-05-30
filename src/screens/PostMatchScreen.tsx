@@ -38,9 +38,7 @@ async function shareNewspaper(data: {
   c.fillText(`Est. 1982 · Price 50p · ${data.date}`, 300, 38)
 
   c.fillStyle = accent
-  c.beginPath()
-  c.roundRect(24, 60, 552, 80, 8)
-  c.fill()
+  c.fillRect(24, 60, 552, 80)
   c.fillStyle = data.result === 'draw' ? '#0C0C10' : '#fff'
   c.font = 'bold 64px sans-serif'
   c.textAlign = 'center'

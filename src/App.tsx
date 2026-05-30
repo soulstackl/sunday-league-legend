@@ -107,7 +107,13 @@ export function App() {
 
   const [store, setStoreRaw] = useState<SaveState>(() => {
     const loaded = loadGame()
-    if (loaded && loaded.player && loaded.player.name) return loaded
+    if (loaded && loaded.player && loaded.player.name) {
+      // Assign objectives for saves that predate the objectives system.
+      if (!loaded.objectives.short && !loaded.objectives.medium && !loaded.objectives.long) {
+        assignInitialObjectives(loaded)
+      }
+      return loaded
+    }
     return deepClone(initialSaveState)
   })
 
@@ -128,6 +134,7 @@ export function App() {
       .then(() => setPlatform({ isDiscord: platformAdapter.isDiscord }))
       .catch(() => {})
   }, [])
+
 
   useEffect(() => {
     applyTextSize(store.settings.textSize)
@@ -418,6 +425,11 @@ export function App() {
     const position = ourLeaguePosition(standings)
     const promo = resolvePromotionRelegation(position, standings.length, store.season.tier)
 
+    // Include season-end achievements (promoted/relegated/veteran) that are only
+    // checked when continuing, so retiring players get their full achievement set.
+    const seasonEndAchs = checkAchievementsAtSeasonEnd(store, position, standings.length)
+    const allAchievements = [...new Set([...store.season.achievements, ...seasonEndAchs])]
+
     const entry: HallOfFameEntry = {
       name: store.player.name,
       archetype: store.player.archetype,
@@ -430,7 +442,7 @@ export function App() {
       cupWon: store.season.cupWon,
       finalTier: promo.newTier,
       signatureTrait: pickSignatureTrait(store.player.traits),
-      achievements: [...store.season.achievements],
+      achievements: allAchievements,
     }
     const hof = [...store.hallOfFame, entry]
     const fresh = deepClone(initialSaveState)
