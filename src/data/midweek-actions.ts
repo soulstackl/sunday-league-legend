@@ -5,7 +5,7 @@ export const MIDWEEK_ACTIONS: MidweekAction[] = [
     id: 'train',
     name: 'Train with the lads',
     icon: 'Activity',
-    description: 'Turn up to training. Pete notices. A random core stat sharpens.',
+    description: 'Hit the training pitch. Complete a drill to earn a bigger stat boost.',
     effects: { statBoost: 'random', managerTrust: 3, fatigue: 5 },
     groupChatTrigger: 'training-banter',
   },

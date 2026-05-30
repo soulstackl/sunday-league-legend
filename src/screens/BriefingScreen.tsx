@@ -16,18 +16,45 @@ interface BriefingScreenProps {
 export function BriefingScreen({ store, fixture, activeCards, onStartMatch }: BriefingScreenProps) {
   const week = store.season.week
 
+  const recentLeague = store.season.results.filter(r => r.competition === 'league').slice(-3)
+  const recentWins = recentLeague.filter(r => r.ourGoals > r.theirGoals).length
+  const recentLosses = recentLeague.filter(r => r.ourGoals < r.theirGoals).length
+  const peteDisposition = recentWins >= 2 ? 'confident' : recentLosses >= 2 ? 'frustrated' : 'neutral'
+
   const cupTalk = [
     'Right lads. Tankard tie. None of this is friendly. Get tight, win the second balls.',
     'Cup football is different. One mistake and we are out. Concentrate for ninety minutes.',
     'I have waited fifteen years to win this Tankard. Do me proud.',
   ]
-  const leagueTalk = [
+  const leagueTalkNeutral = [
     'Right lads. Standard 4-4-2. Pass it simple, and hit it long if in doubt.',
     'They have got a weak defensive line. Get it wide, get it in the mixer.',
     'We are down to the bare bones today. Work hard, cover each other, and drink water.',
     'Focus on the first touches. Do not give them a second to settle in our half.',
   ]
-  const pool = fixture.kind === 'cup' ? cupTalk : leagueTalk
+  const leagueTalkConfident = [
+    'Form has been brilliant. Keep it simple, play your natural game and more of the same.',
+    'We are flying right now. Give them nothing in the first ten and this is ours.',
+    'I am not going to change a thing. Everyone knows the job. Go out and enjoy it.',
+    'Top of the table confidence. Back yourself today, lads. We have earned this.',
+  ]
+  const leagueTalkFrustrated = [
+    'Enough is enough. I want runners, I want graft, I want everything you have. No excuses.',
+    'This group is better than the last two results. Prove it today or I start making changes.',
+    'I am not asking anymore, I am telling you. Work. Hard. Every. Single. Second.',
+    'We owe the fans this one. Chin up, boots on, go and earn your place in this shirt.',
+  ]
+  const nemesisTalk = [
+    'This lot have had our number. That ends today. Play your game and make them pay.',
+    'I do not need to motivate you for this one. You know what they did. Go and settle it.',
+    'Keep your heads. No silly stuff. We finish this properly.',
+  ]
+
+  const isNemesis = store.season.nemesisOpponentId === fixture.opponent.id
+  const leagueTalk = peteDisposition === 'confident' ? leagueTalkConfident
+    : peteDisposition === 'frustrated' ? leagueTalkFrustrated
+    : leagueTalkNeutral
+  const pool = isNemesis ? nemesisTalk : (fixture.kind === 'cup' ? cupTalk : leagueTalk)
   const rng = mulberry32(store.seed + week * 11)
   const teamTalk = pool[Math.floor(rng() * pool.length)]
 
@@ -60,7 +87,18 @@ export function BriefingScreen({ store, fixture, activeCards, onStartMatch }: Br
       <div style={{ display: 'flex', gap: '12px', background: 'var(--card-bg)', border: '1px solid var(--border)', padding: '14px', borderRadius: '14px', marginBottom: '14px' }}>
         <NpcAvatar npcId="pete" size={46} />
         <div>
-          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--accent)', marginBottom: '5px' }}>Pete the Gaffer</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+            <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--accent)' }}>Pete the Gaffer</span>
+            {peteDisposition !== 'neutral' && (
+              <span style={{
+                fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px',
+                background: peteDisposition === 'confident' ? 'var(--success-bg)' : 'var(--danger-bg)',
+                color: peteDisposition === 'confident' ? 'var(--success)' : 'var(--danger)',
+              }}>
+                {peteDisposition === 'confident' ? 'Fired Up' : 'Under Pressure'}
+              </span>
+            )}
+          </div>
           <p style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--text-muted)', lineHeight: '1.5' }}>"{teamTalk}"</p>
         </div>
       </div>

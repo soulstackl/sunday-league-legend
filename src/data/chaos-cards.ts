@@ -39,7 +39,7 @@ export const CHAOS_CARDS: ChaosCard[] = [
   { id: 'kit_mixup',    type: 'Drama', title: 'Kit Mix-Up',                 desc: 'Bev left the home kit wet in the washing machine. Playing in bibs.',             effects: 'Morale -5 but hilarious newspaper post-match coverage', tip: 'Focus on the badge.' },
 
   // Rivalry
-  { id: 'watching', type: 'Rivalry', title: 'Anchor Athletic Are Watching', desc: 'Rival scouts seen behind the hedge. They know exactly how you play.',        effects: 'Moment resolution difficulty increased',   tip: 'Try the unexpected.' },
+  { id: 'watching', type: 'Rivalry', title: 'Anchor Athletic Are Watching', desc: 'Rival scouts seen behind the hedge. They know exactly how you play.',        effects: 'Moment resolution difficulty increased',   tip: 'Try the unexpected.',   condition: { localFame: { min: 20 } } },
   { id: 'nemesis',  type: 'Rivalry', title: 'The Nemesis Returns',          desc: 'Your personal rival is in their starting eleven today.',                    effects: 'Confidence checks during matches are harder', tip: 'Prove them wrong.' },
   {
     id: 'ref_clive', type: 'Rivalry', title: 'Referee Clive',
@@ -53,7 +53,7 @@ export const CHAOS_CARDS: ChaosCard[] = [
   },
 
   // Work/Life
-  { id: 'double',   type: 'Work/Life', title: 'Worked a Double Shift',  desc: 'You have been on your feet for sixteen hours before kickoff.',           effects: 'Start match with +20 fatigue',                      tip: 'Take simple touches.' },
+  { id: 'double',   type: 'Work/Life', title: 'Worked a Double Shift',  desc: 'You have been on your feet for sixteen hours before kickoff.',           effects: 'Start match with +20 fatigue',                      tip: 'Take simple touches.',   condition: { fatigue: { min: 40 } } },
   { id: 'rel_drama', type: 'Work/Life', title: 'Relationship Drama',    desc: 'Your phone is buzzing in the dressing room. You are completely distracted.', effects: 'Morale and composure check penalised',              tip: 'Put the phone away.' },
   {
     id: 'bollocking', type: 'Work/Life', title: 'Bollocking at Work',
@@ -77,12 +77,12 @@ export const CHAOS_CARDS: ChaosCard[] = [
   },
 
   // Fitness/Injury
-  { id: 'hamstring',  type: 'Fitness', title: 'Niggly Hamstring',         desc: 'Your left hamstring feels tight. You cannot sprint properly.',                  effects: 'Pace -3, high risk of pulling up',               tip: 'Avoid long runs.' },
+  { id: 'hamstring',  type: 'Fitness', title: 'Niggly Hamstring',         desc: 'Your left hamstring feels tight. You cannot sprint properly.',                  effects: 'Pace -3, high risk of pulling up',               tip: 'Avoid long runs.',   condition: { fatigue: { min: 55 } } },
   { id: 'taz_strap',  type: 'Fitness', title: 'Big Taz Needs Strapping',  desc: 'Taz is playing but his knee is wrapped in two rolls of heavy tape.',           effects: 'Opponent runs are harder to track',               tip: 'Help defend.' },
   { id: 'deano_back', type: 'Fitness', title: "Deano's Back Complaint",   desc: 'Deano is complaining loudly about his back every time he bends down.',         effects: 'Goalkeeper save parameters reduced by 2',        tip: 'Protect the goal.' },
 
   // Social
-  { id: 'legendary_train', type: 'Social', title: 'Legendary Training Session', desc: 'You actually did a proper warm-up drill and team runs.',           effects: 'Chemistry +10, Confidence +5',            tip: 'Build on the momentum.' },
+  { id: 'legendary_train', type: 'Social', title: 'Legendary Training Session', desc: 'You actually did a proper warm-up drill and team runs.',           effects: 'Chemistry +10, Confidence +5',            tip: 'Build on the momentum.',   condition: { teamChemistry: { max: 70 } } },
   { id: 'brawl',           type: 'Social', title: 'Pub Brawl Aftermath',        desc: 'A disagreement at the karaoke night got two of our squad suspended.', effects: 'Fewer available teammates in match moments', tip: 'Carry the workload.' },
   { id: 'club_trip',       type: 'Social', title: 'Club Trip Was Last Night',   desc: 'Blackpool away was epic, but the bus ride back was rough.',          effects: '-1 to all stats, team Vibes are legendary', tip: 'Enjoy the match.' },
   { id: 'fundraiser',      type: 'Social', title: 'Fundraiser Hangover',        desc: 'Raised £400 for the new goal nets. A great night, terrible morning.',  effects: 'Vibes +10, Fitness -5',                    tip: 'Play for the fans.' },

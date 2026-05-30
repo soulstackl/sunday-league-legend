@@ -115,6 +115,10 @@ interface MatchReportProp {
   kind: 'league' | 'cup'
   cupRound?: 'quarter-final' | 'semi-final' | 'final'
   opponentName: string
+  isNemesisRevenge?: boolean
+  isNewNemesis?: boolean
+  unlockedObjectives?: { title: string; rewardLabel: string }[]
+  unlockedAchievements?: { emoji: string; title: string }[]
 }
 
 interface PostMatchScreenProps {
@@ -177,6 +181,12 @@ export function PostMatchScreen({ store, matchReport, onContinue }: PostMatchScr
     `HEARTBREAK AT THE ${round.toUpperCase()} STAGE`,
   ]
 
+  const NEMESIS_REVENGE_HEADLINES = [
+    `REVENGE IS SWEET: ${store.player.name.toUpperCase()} SINKS ${opponentName.toUpperCase()}`,
+    `THE DOG BITES BACK: ${opponentName.toUpperCase()} FINALLY BEATEN`,
+    `NEMESIS NO MORE: ${store.player.name.toUpperCase()} ENDS THE HOODOO`,
+  ]
+
   const rngHead = mulberry32(store.seed + store.season.week * 77 + store.season.number * 13)
   let headline: string
   if (isCup) {
@@ -190,7 +200,7 @@ export function PostMatchScreen({ store, matchReport, onContinue }: PostMatchScr
       headline = arr[Math.floor(rngHead() * arr.length)]
     }
   } else {
-    const arr = won ? WIN_HEADLINES : draw ? DRAW_HEADLINES : LOSS_HEADLINES
+    const arr = matchReport.isNemesisRevenge ? NEMESIS_REVENGE_HEADLINES : (won ? WIN_HEADLINES : draw ? DRAW_HEADLINES : LOSS_HEADLINES)
     headline = arr[Math.floor(rngHead() * arr.length)]
   }
 
@@ -223,6 +233,18 @@ export function PostMatchScreen({ store, matchReport, onContinue }: PostMatchScr
             <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '42px', fontWeight: 700, color: won ? '#fff' : (draw ? '#0C0C10' : '#fff'), lineHeight: 1 }}>{theirGoals}</span>
           </div>
 
+          {/* Nemesis callout */}
+          {matchReport.isNemesisRevenge && (
+            <div style={{ border: '2px solid #166534', borderRadius: '6px', padding: '5px 8px', marginBottom: '10px', textAlign: 'center', fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: '11px', color: '#166534', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              ★ Nemesis Defeated ★
+            </div>
+          )}
+          {matchReport.isNewNemesis && (
+            <div style={{ border: '2px solid #b91c1c', borderRadius: '6px', padding: '5px 8px', marginBottom: '10px', textAlign: 'center', fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: '11px', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              ⚠ {opponentName}: Your New Nemesis
+            </div>
+          )}
+
           {/* Headline */}
           <h1 style={{ fontFamily: 'Georgia, serif', fontSize: wide ? '22px' : '18px', lineHeight: '1.2', marginBottom: '12px', fontWeight: 900, textAlign: 'center', color: '#1a1a1a' }}>{headline}</h1>
 
@@ -252,6 +274,19 @@ export function PostMatchScreen({ store, matchReport, onContinue }: PostMatchScr
               <p style={{ fontFamily: 'Georgia, serif', fontSize: '12px', lineHeight: '1.4', color: '#444' }}>"Ref was a joke, but the lad pulled us through," added Big Taz.</p>
             </div>
           </div>
+
+          {/* Unlocked this match */}
+          {((matchReport.unlockedObjectives?.length ?? 0) > 0 || (matchReport.unlockedAchievements?.length ?? 0) > 0) && (
+            <div style={{ borderTop: '1px solid #ccc', paddingTop: '10px', marginTop: '14px' }}>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#555', marginBottom: '6px' }}>Late Flash</div>
+              {matchReport.unlockedObjectives?.map((o, i) => (
+                <div key={`obj-${i}`} style={{ fontFamily: 'Georgia, serif', fontSize: '12px', color: '#333', marginBottom: '4px' }}>★ {o.title} — {o.rewardLabel}</div>
+              ))}
+              {matchReport.unlockedAchievements?.map((a, i) => (
+                <div key={`ach-${i}`} style={{ fontFamily: 'Georgia, serif', fontSize: '12px', color: '#333', marginBottom: '4px' }}>{a.emoji} {a.title}</div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '18px' }}>
             <button

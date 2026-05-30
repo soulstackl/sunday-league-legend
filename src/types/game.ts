@@ -17,6 +17,7 @@ export interface PlayerStates {
   fatigue: number
   confidence: number
   injuryRisk: number
+  injuryWeeksRemaining: number
   managerTrust: number
   teamChemistry: number
   localFame: number
@@ -130,6 +131,13 @@ export interface ChaosCardChoice {
   outcome: string
 }
 
+export interface ChaosCardCondition {
+  fatigue?: { min: number }
+  teamChemistry?: { min?: number; max?: number }
+  localFame?: { min: number }
+  injuryRisk?: { min: number }
+}
+
 export interface ChaosCard {
   id: string
   type: string
@@ -139,6 +147,7 @@ export interface ChaosCard {
   tip: string
   teamStrengthMod?: number
   choices?: ChaosCardChoice[]
+  condition?: ChaosCardCondition
 }
 
 export interface ChatChoice {
@@ -147,6 +156,7 @@ export interface ChatChoice {
     relationship?: Record<string, number>
     vibes?: number
     confidence?: number
+    teamChemistry?: number
   }
 }
 

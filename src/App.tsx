@@ -61,10 +61,11 @@ import { SettingsScreen } from './screens/SettingsScreen'
 import { SquadScreen } from './screens/SquadScreen'
 import { StatGrowthScreen } from './screens/StatGrowthScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
+import { TrainingDrillScreen } from './screens/TrainingDrillScreen'
 
 type Screen =
   | 'title' | 'name' | 'archetype' | 'job' | 'intro'
-  | 'hub' | 'midweek' | 'chat' | 'chaos' | 'briefing' | 'arena'
+  | 'hub' | 'midweek' | 'chat' | 'chaos' | 'briefing' | 'arena' | 'training'
   | 'postmatch' | 'table' | 'complete' | 'hall' | 'settings'
   | 'squad' | 'growth' | 'player'
 
@@ -76,6 +77,10 @@ interface MatchReportLocal {
   kind: 'league' | 'cup'
   cupRound?: 'quarter-final' | 'semi-final' | 'final'
   opponentName: string
+  isNemesisRevenge: boolean
+  isNewNemesis: boolean
+  unlockedObjectives: { title: string; rewardLabel: string }[]
+  unlockedAchievements: { emoji: string; title: string }[]
 }
 
 const STAT_KEYS: StatKey[] = ['touch', 'strike', 'pass', 'engine', 'graft', 'head', 'pace', 'vibes']
@@ -128,6 +133,7 @@ export function App() {
   const [pendingStatGrowth, setPendingStatGrowth] = useState(false)
   const [growthChoices, setGrowthChoices] = useState<StatKey[]>([])
   const [tableCanAdvance, setTableCanAdvance] = useState(false)
+  const [pendingTrainingAction, setPendingTrainingAction] = useState<MidweekAction | null>(null)
 
   useEffect(() => {
     platformAdapter.init()
@@ -167,7 +173,14 @@ export function App() {
 
   const fixture = getFixture(store.season.week, store.season.tier, store.season.cupExited)
 
-  const triggerMidweekAction = (action: MidweekAction, statChoice?: StatKey, npcTarget?: string) => {
+  const triggerMidweekAction = (action: MidweekAction, statChoice?: StatKey, npcTarget?: string, drillScore?: number) => {
+    // Training drill intercept: navigate to the drill screen — all effects deferred until drill completes.
+    if (action.id === 'train' && drillScore === undefined) {
+      setPendingTrainingAction(action)
+      setCurrentScreen('training')
+      return
+    }
+
     updateStore(s => {
       const traits = s.player.traits
       const pubFatigueRelief = action.id === 'pub' ? getPubFatigueReduction(traits) : 0
@@ -183,7 +196,33 @@ export function App() {
       if (action.effects.vibes) s.player.stats.vibes = clamp(s.player.stats.vibes + action.effects.vibes, 1, 20)
       if (action.effects.strike) s.player.stats.strike = clamp(s.player.stats.strike + action.effects.strike, 1, 20)
 
-      if (action.effects.statBoost === 'random') {
+      // Rest reduces both injury counter and accumulated risk.
+      if (action.id === 'rest') {
+        if (s.player.states.injuryWeeksRemaining > 0) {
+          s.player.states.injuryWeeksRemaining = Math.floor(s.player.states.injuryWeeksRemaining / 2)
+        }
+        s.player.states.injuryRisk = Math.max(0, s.player.states.injuryRisk - 10)
+      }
+      // Injury trigger: probabilistic check on high accumulated risk.
+      const injRng = mulberry32(s.seed + s.season.week * 31 + s.careerEvents.length)
+      const injChance = s.player.states.injuryRisk / 200
+      if (s.player.states.injuryRisk > 40 && injRng() < injChance && s.player.states.injuryWeeksRemaining === 0) {
+        s.player.states.injuryWeeksRemaining = 2
+        s.groupChatLog.push({ sender: 'system', text: 'That knock is worse than it looked. You are carrying an injury.', time: 'Now' })
+      }
+
+      // Stat boosts — 'train' action applies drill-score-based boost, all others use action effects.
+      if (action.id === 'train') {
+        if (drillScore !== undefined && drillScore > 0) {
+          const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEvents.length)
+          const k = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
+          s.player.stats[k] = Math.min(20, s.player.stats[k] + drillScore)
+          if (getTrainingExtraStat(traits)) {
+            const k2 = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
+            s.player.stats[k2] = Math.min(20, s.player.stats[k2] + 1)
+          }
+        }
+      } else if (action.effects.statBoost === 'random') {
         const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEvents.length)
         const k = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
         s.player.stats[k] = Math.min(20, s.player.stats[k] + 1)
@@ -204,11 +243,18 @@ export function App() {
 
       s.careerEvents.push({ type: 'midweek_action', action: action.id, week: s.season.week })
 
-      const choiceMsg = action.groupChatTrigger ? CHOICE_MESSAGES[action.groupChatTrigger] : null
-      if (choiceMsg) s.groupChatLog.push({ ...choiceMsg })
-      else {
-        const banter = MESSAGE_TEMPLATES.midweek[Math.floor(Math.random() * MESSAGE_TEMPLATES.midweek.length)]
-        s.groupChatLog.push({ sender: banter.sender, text: banter.text, time: banter.time })
+      // Training drill: only send Pete's feedback when the drill was actually completed.
+      // On skip (drillScore === 0) send a neutral system note instead.
+      const skipDrill = action.id === 'train' && drillScore === 0
+      if (!skipDrill) {
+        const choiceMsg = action.groupChatTrigger ? CHOICE_MESSAGES[action.groupChatTrigger] : null
+        if (choiceMsg) s.groupChatLog.push({ ...choiceMsg })
+        else {
+          const banter = MESSAGE_TEMPLATES.midweek[Math.floor(Math.random() * MESSAGE_TEMPLATES.midweek.length)]
+          s.groupChatLog.push({ sender: banter.sender, text: banter.text, time: banter.time })
+        }
+      } else {
+        s.groupChatLog.push({ sender: 'system', text: s.player.name + ' skipped the drill this week.', time: 'Now' })
       }
       const label = npcTarget && s.npcs[npcTarget] ? action.name + ' with ' + (NPCS[npcTarget]?.name ?? npcTarget) : action.name
       s.groupChatLog.push({ sender: 'system', text: s.player.name + ' chose: ' + label, time: 'Now' })
@@ -223,8 +269,25 @@ export function App() {
     setCurrentScreen('hub')
   }
 
+  const completeDrill = (drillScore: number) => {
+    if (!pendingTrainingAction) return
+    const action = pendingTrainingAction
+    setPendingTrainingAction(null)
+    triggerMidweekAction(action, undefined, undefined, drillScore)
+  }
+
   const kickOffMatch = (cards: ChaosCard[], choiceEffects: ChaosCardChoice['effect'][] = []) => {
     updateStore(s => {
+      // Pete mood modifier applied at kickoff so it affects the match.
+      const recentLeague = s.season.results.filter(r => r.competition === 'league').slice(-3)
+      const rWins = recentLeague.filter(r => r.ourGoals > r.theirGoals).length
+      const rLosses = recentLeague.filter(r => r.ourGoals < r.theirGoals).length
+      if (rWins >= 2) {
+        s.player.states.confidence = clamp(s.player.states.confidence + 5, 0, 100)
+      } else if (rLosses >= 2) {
+        s.player.states.teamChemistry = clamp(s.player.states.teamChemistry - 3, 0, 100)
+      }
+
       if (s.contextModifiers.hangoverPending) {
         s.player.states.confidence = clamp(s.player.states.confidence - 5, 0, 100)
         s.player.states.fatigue = clamp(s.player.states.fatigue + 5, 0, 100)
@@ -262,6 +325,11 @@ export function App() {
     const won = outcome.ourGoals > outcome.theirGoals
     const drew = outcome.ourGoals === outcome.theirGoals
 
+    let isNemesisRevenge = false
+    let isNewNemesis = false
+    const unlockedObjectives: { title: string; rewardLabel: string }[] = []
+    const unlockedAchievements: { emoji: string; title: string }[] = []
+
     updateStore(s => {
       s.season.results.push({
         week,
@@ -296,13 +364,18 @@ export function App() {
 
       s.careerEvents.push({ type: 'match_complete', week, result: won ? 'win' : drew ? 'draw' : 'loss' })
 
-      // Nemesis tracking: if this opponent has beaten us twice, they become the nemesis.
+      // Nemesis tracking: if this opponent has beaten us twice they become the nemesis.
+      const wasNemesisBefore = s.season.nemesisOpponentId === opponent.id
       if (!won && !drew) {
         const lossesToThisOpp = s.season.results.filter(r => r.opponentId === opponent.id && r.ourGoals < r.theirGoals).length
-        if (lossesToThisOpp >= 2) s.season.nemesisOpponentId = opponent.id
+        if (lossesToThisOpp >= 2) {
+          if (!wasNemesisBefore) isNewNemesis = true
+          s.season.nemesisOpponentId = opponent.id
+        }
       }
-      // Nemesis revenge: if we beat our nemesis, celebrate in chat.
-      if (won && s.season.nemesisOpponentId === opponent.id) {
+      // Nemesis revenge: surface in match report and chat when the nemesis is beaten.
+      if (won && wasNemesisBefore) {
+        isNemesisRevenge = true
         s.groupChatLog.push({ sender: 'system', text: `REVENGE. ${opponent.name} put to the sword at last. The dog bites back.`, time: 'FT' })
       }
 
@@ -314,6 +387,7 @@ export function App() {
         if (definition.reward.confidence) s.player.states.confidence = clamp(s.player.states.confidence + definition.reward.confidence, 0, 100)
         if (definition.reward.teamChemistry) s.player.states.teamChemistry = clamp(s.player.states.teamChemistry + definition.reward.teamChemistry, 0, 100)
         s.groupChatLog.push({ sender: 'system', text: `Objective complete: ${definition.title}. Reward: ${definition.reward.label}.`, time: 'FT' })
+        unlockedObjectives.push({ title: definition.title, rewardLabel: definition.reward.label })
       }
       // Achievement unlocks.
       const chaosCount = activeCards.length
@@ -321,11 +395,37 @@ export function App() {
       for (const id of newAchievements) {
         s.season.achievements.push(id)
         const ach = findAchievement(id)
-        if (ach) s.groupChatLog.push({ sender: 'system', text: `${ach.emoji} Achievement unlocked: ${ach.title} — ${ach.description}`, time: 'FT' })
+        if (ach) {
+          s.groupChatLog.push({ sender: 'system', text: `${ach.emoji} Achievement unlocked: ${ach.title} — ${ach.description}`, time: 'FT' })
+          unlockedAchievements.push({ emoji: ach.emoji, title: ach.title })
+        }
       }
 
       const templates = won ? MESSAGE_TEMPLATES.postMatchWin : drew ? MESSAGE_TEMPLATES.postMatchDraw : MESSAGE_TEMPLATES.postMatchLoss
       templates.forEach(t => s.groupChatLog.push({ ...t }))
+
+      // Stat-conditional NPC reactions on top of generic templates.
+      const lastStats = s.season.results[s.season.results.length - 1]?.stats
+      const lastGoals = lastStats?.goals ?? 0
+      const goalDiff = outcome.ourGoals - outcome.theirGoals
+      const cleanSheet = outcome.theirGoals === 0
+      if (lastGoals >= 3) {
+        s.groupChatLog.push({ sender: 'deano', text: `Three goals mate. I don't care what anyone says, you're a machine.`, time: 'FT' })
+      } else if (lastGoals >= 2) {
+        s.groupChatLog.push({ sender: 'gav', text: 'Brace today. Knew you had it in you. Pints on you.', time: 'FT' })
+      }
+      if (rating >= 9) {
+        s.groupChatLog.push({ sender: 'pete', text: `Best I have seen you play in a long time. That is what I want every week.`, time: 'FT' })
+      }
+      if (cleanSheet && won) {
+        s.groupChatLog.push({ sender: 'shaz', text: 'Back line was class today. We earned that clean sheet together.', time: 'FT' })
+      }
+      if (rating <= 4) {
+        s.groupChatLog.push({ sender: 'bigtaz', text: 'Shake it off mate. Different story next week. We go again.', time: 'FT' })
+      }
+      if (goalDiff >= 3) {
+        s.groupChatLog.push({ sender: 'dazza', text: 'We battered them. Pub? Anyone? Pub.', time: 'FT' })
+      }
     })
     setMatchReport({
       ourGoals: outcome.ourGoals,
@@ -335,6 +435,10 @@ export function App() {
       kind: fixture.kind,
       cupRound: fixture.cupRound,
       opponentName: opponent.name,
+      isNemesisRevenge,
+      isNewNemesis,
+      unlockedObjectives,
+      unlockedAchievements,
     })
     setTableCanAdvance(true)
     setCurrentScreen('postmatch')
@@ -356,6 +460,7 @@ export function App() {
       }
       if (choice.effect.vibes) s.player.stats.vibes = clamp(s.player.stats.vibes + choice.effect.vibes, 1, 20)
       if (choice.effect.confidence) s.player.states.confidence = clamp(s.player.states.confidence + choice.effect.confidence, 0, 100)
+      if (choice.effect.teamChemistry) s.player.states.teamChemistry = clamp(s.player.states.teamChemistry + choice.effect.teamChemistry, 0, 100)
 
       for (const sub of s.subplots.filter(x => !x.resolved)) {
         const def = findSubplot(sub.id)
@@ -391,8 +496,19 @@ export function App() {
           s.groupChatLog.push({ sender: t.sender, text: t.text.replace('Anchor Athletic', oppName), time: t.time })
         })
 
-        s.player.states.fatigue = Math.max(0, s.player.states.fatigue - 8)
-        s.player.states.fitness = Math.min(100, s.player.states.fitness + 3)
+        // Injury risk decays naturally each week.
+        s.player.states.injuryRisk = Math.max(0, s.player.states.injuryRisk - 5)
+
+        // Injury duration tick: while injured, recovery is halved.
+        if (s.player.states.injuryWeeksRemaining > 0) {
+          s.player.states.injuryWeeksRemaining = Math.max(0, s.player.states.injuryWeeksRemaining - 1)
+          s.player.states.fatigue = Math.max(0, s.player.states.fatigue - 4)
+          s.player.states.fitness = Math.min(100, s.player.states.fitness + 1)
+          s.player.states.confidence = clamp(s.player.states.confidence - 2, 0, 100)
+        } else {
+          s.player.states.fatigue = Math.max(0, s.player.states.fatigue - 8)
+          s.player.states.fitness = Math.min(100, s.player.states.fitness + 3)
+        }
         if (s.player.states.form > 0) s.player.states.form = Math.max(0, s.player.states.form - 0.3)
         if (s.player.states.form < 0) s.player.states.form = Math.min(0, s.player.states.form + 0.3)
 
@@ -515,6 +631,7 @@ export function App() {
       s.player.states.confidence = 55
       s.player.states.form = 0
       s.player.states.injuryRisk = Math.max(0, s.player.states.injuryRisk - 30)
+      s.player.states.injuryWeeksRemaining = 0
 
       // Fresh objectives for new season.
       s.objectives = { short: null, medium: null, long: null, completedThisSeason: [] }
@@ -652,6 +769,14 @@ export function App() {
           fixture={fixture}
           activeCards={activeCards}
           onCompleteMatch={completeMatch}
+        />
+      )}
+
+      {currentScreen === 'training' && pendingTrainingAction && (
+        <TrainingDrillScreen
+          store={store}
+          onComplete={completeDrill}
+          onSkip={() => { completeDrill(0) }}
         />
       )}
 

@@ -100,7 +100,12 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
                     <IconComponent size={18} />
                   </div>
                 )}
-                <span style={{ fontWeight: 700, fontSize: '15px', color: isSel ? 'var(--accent)' : 'var(--text)' }}>{act.name}</span>
+                <span style={{ fontWeight: 700, fontSize: '15px', color: isSel ? 'var(--accent)' : 'var(--text)' }}>
+                  {act.name}
+                  {act.id === 'rest' && store.player.states.injuryWeeksRemaining > 0 && (
+                    <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, color: 'var(--danger)', fontFamily: 'var(--font-mono)' }}>Injured · {store.player.states.injuryWeeksRemaining}wk</span>
+                  )}
+                </span>
               </div>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.4', paddingLeft: '28px' }}>{act.description}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', fontSize: '10px', fontFamily: 'var(--font-mono)', paddingLeft: '28px' }}>

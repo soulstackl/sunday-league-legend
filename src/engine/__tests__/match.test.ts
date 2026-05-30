@@ -9,6 +9,7 @@ const baseStates: PlayerStates = {
   fatigue: 0,
   confidence: 50,
   injuryRisk: 0,
+  injuryWeeksRemaining: 0,
   managerTrust: 50,
   teamChemistry: 50,
   localFame: 0,

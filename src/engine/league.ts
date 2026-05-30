@@ -165,7 +165,7 @@ export function resolvePromotionRelegation(
   totalTeams: number,
   currentTier: 1 | 2 | 3,
 ): PromotionOutcome {
-  // Top two promoted, bottom two relegated.
+  // Promotes positions 1 and 2. Relegates the bottom two (positions N-1 and N for N teams).
   const top = position <= 2
   const bottom = position >= totalTeams - 1
 

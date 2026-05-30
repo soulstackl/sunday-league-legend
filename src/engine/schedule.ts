@@ -48,7 +48,7 @@ function getLeagueFixtureFallback(week: number, tier: 1 | 2 | 3): Fixture {
 }
 
 export function isFinalWeek(week: number): boolean {
-  return week >= TOTAL_WEEKS
+  return week === TOTAL_WEEKS
 }
 
 export function nextWeekNumber(week: number): number {

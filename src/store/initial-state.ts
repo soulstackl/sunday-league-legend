@@ -14,7 +14,7 @@ export const initialSaveState: SaveState = {
     job: '',
     position: 'CM',
     stats: { touch: 10, strike: 10, pass: 10, engine: 10, graft: 10, head: 10, pace: 10, vibes: 10 },
-    states: { form: 0, fitness: 100, fatigue: 0, confidence: 50, injuryRisk: 0, managerTrust: 50, teamChemistry: 50, localFame: 0, refereeRep: 50 },
+    states: { form: 0, fitness: 100, fatigue: 0, confidence: 50, injuryRisk: 0, injuryWeeksRemaining: 0, managerTrust: 50, teamChemistry: 50, localFame: 0, refereeRep: 50 },
     traits: [],
   },
   club: 'dog-and-duck',

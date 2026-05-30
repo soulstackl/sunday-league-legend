@@ -23,8 +23,20 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
   const cards = useMemo<ChaosCard[]>(() => {
     const rng = mulberry32(store.seed + store.season.week * 41 + store.season.number * 7)
     const recentIds = new Set((store.chaosCardHistory || []).slice(-12).map(c => c.id))
-    const available = CHAOS_CARDS.filter(c => !recentIds.has(c.id))
-    const pool = available.length >= drawCount ? available : CHAOS_CARDS
+    const states = store.player.states
+    const conditionMet = (c: ChaosCard) => {
+      if (!c.condition) return true
+      if (c.condition.fatigue && states.fatigue < c.condition.fatigue.min) return false
+      if (c.condition.teamChemistry) {
+        if (c.condition.teamChemistry.min !== undefined && states.teamChemistry < c.condition.teamChemistry.min) return false
+        if (c.condition.teamChemistry.max !== undefined && states.teamChemistry > c.condition.teamChemistry.max) return false
+      }
+      if (c.condition.localFame && states.localFame < c.condition.localFame.min) return false
+      if (c.condition.injuryRisk && states.injuryRisk < c.condition.injuryRisk.min) return false
+      return true
+    }
+    const available = CHAOS_CARDS.filter(c => !recentIds.has(c.id) && conditionMet(c))
+    const pool = available.length >= drawCount ? available : CHAOS_CARDS.filter(conditionMet)
     const picked: ChaosCard[] = []
     const used = new Set<number>()
     while (picked.length < drawCount && used.size < pool.length) {
@@ -34,7 +46,7 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
       picked.push(pool[idx])
     }
     return picked
-  }, [store.seed, store.season.week, store.season.number, store.chaosCardHistory, drawCount])
+  }, [store.seed, store.season.week, store.season.number, store.chaosCardHistory, drawCount, store.player.states])
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)

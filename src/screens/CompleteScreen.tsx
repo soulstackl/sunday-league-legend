@@ -3,7 +3,8 @@ import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { Card } from '../components/shared/Card'
 import { buildStandings, ourLeaguePosition, resolvePromotionRelegation } from '../engine/league'
-import { TIER_NAMES } from '../data/opponents'
+import { getLeagueOpponents, TIER_NAMES } from '../data/opponents'
+import { CUP_OPPONENTS } from '../data/cup'
 import type { SaveState, Ending } from '../types/game'
 
 async function shareSeasonWrap(data: {
@@ -148,6 +149,20 @@ export function CompleteScreen({ store, resolveEnding, onHallOfFame, onNextSeaso
   const tierName = TIER_NAMES[store.season.tier]
   const nextTierName = TIER_NAMES[promo.newTier]
 
+  const nemesisId = store.season.nemesisOpponentId
+  let nemesisName: string | null = null
+  let nemesisBeaten = false
+  if (nemesisId) {
+    const allOpponents = [
+      ...getLeagueOpponents(1),
+      ...getLeagueOpponents(2),
+      ...getLeagueOpponents(3),
+      ...Object.values(CUP_OPPONENTS),
+    ]
+    nemesisName = allOpponents.find(o => o.id === nemesisId)?.name ?? null
+    nemesisBeaten = store.season.results.some(r => r.opponentId === nemesisId && r.ourGoals > r.theirGoals)
+  }
+
   const movementColour = promo.movement === 'promoted' ? 'var(--success)' : promo.movement === 'relegated' ? 'var(--danger)' : 'var(--accent)'
   const movementBg = promo.movement === 'promoted' ? 'var(--success-bg)' : promo.movement === 'relegated' ? 'var(--danger-bg)' : 'var(--accent-bg)'
   const movementBorder = promo.movement === 'promoted' ? 'rgba(34,197,94,0.25)' : promo.movement === 'relegated' ? 'rgba(244,63,94,0.25)' : 'rgba(240,168,48,0.25)'
@@ -170,6 +185,18 @@ export function CompleteScreen({ store, resolveEnding, onHallOfFame, onNextSeaso
       <div style={{ background: movementBg, border: `1px solid ${movementBorder}`, borderRadius: '12px', padding: '12px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
         <div style={{ fontWeight: 700, fontSize: '15px', color: movementColour, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{movementLabel}</div>
       </div>
+
+      {/* Nemesis resolution */}
+      {nemesisName && (
+        <Card style={{ marginBottom: '12px', textAlign: 'left' }}>
+          <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '5px' }}>Nemesis</div>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: nemesisBeaten ? 'var(--success)' : 'var(--danger)', margin: 0 }}>
+            {nemesisBeaten
+              ? `${nemesisName} were put to the sword. Account settled.`
+              : `${nemesisName} had your number all season. Unfinished business.`}
+          </p>
+        </Card>
+      )}
 
       {/* Season summary */}
       <Card style={{ marginBottom: '20px', textAlign: 'left' }}>

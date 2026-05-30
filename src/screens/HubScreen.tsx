@@ -47,6 +47,15 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
     store.contextModifiers.setPieceReady ? 'Set Pieces Sharp' : null,
   ].filter(Boolean) as string[]
 
+  const recentLeague = store.season.results.filter(r => r.competition === 'league').slice(-3)
+  const recentWins = recentLeague.filter(r => r.ourGoals > r.theirGoals).length
+  const recentLosses = recentLeague.filter(r => r.ourGoals < r.theirGoals).length
+  const peteDisposition = recentWins >= 2 ? 'confident' : recentLosses >= 2 ? 'frustrated' : 'neutral'
+  const peteMoodLine = peteDisposition === 'confident' ? 'Pete looks fired up.'
+    : peteDisposition === 'frustrated' ? 'Pete seems under pressure.' : null
+
+  const isInjured = p.states.injuryWeeksRemaining > 0
+
   const navBtn = (label: string, icon: React.ReactNode, onClick: () => void, badge?: number) => (
     <button
       aria-label={label}
@@ -126,6 +135,12 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
         <StatusBar label="Fatigue" value={p.states.fatigue} colour="var(--danger)" />
         <StatusBar label="Confidence" value={p.states.confidence} colour="var(--accent)" />
         <StatusBar label="Manager Trust" value={p.states.managerTrust} colour="var(--purple)" />
+        {isInjured && (
+          <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--danger-bg)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--danger)' }}>Injured</span>
+            <span style={{ fontSize: '11px', color: 'var(--danger)', fontFamily: 'var(--font-mono)' }}>{p.states.injuryWeeksRemaining} week{p.states.injuryWeeksRemaining !== 1 ? 's' : ''} remaining</span>
+          </div>
+        )}
       </div>
 
       <ObjectivesWidget objectives={store.objectives} />
@@ -156,6 +171,9 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>vs {fixture.opponent.name}</h3>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Style: {fixture.opponent.style}</div>
           <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '3px' }}>Difficulty: {fixture.opponent.difficulty}/10</div>
+          {peteMoodLine && (
+            <div style={{ fontSize: '11px', color: peteDisposition === 'confident' ? 'var(--success)' : 'var(--danger)', marginTop: '4px', fontStyle: 'italic' }}>{peteMoodLine}</div>
+          )}
           {ctxBadges.length > 0 && (
             <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
               {ctxBadges.map(b => (
