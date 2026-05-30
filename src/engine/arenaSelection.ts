@@ -3,7 +3,6 @@ import type { Fixture } from './schedule'
 import {
   ARENA_SCENARIOS,
   type ArenaScenario,
-  type ArenaGate,
   type MomentType,
   type Rarity,
 } from '../data/arenaScenarios'

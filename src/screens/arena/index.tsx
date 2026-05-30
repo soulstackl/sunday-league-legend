@@ -13,10 +13,12 @@ import {
 } from '../../engine/traits'
 import { AudioManager } from '../../audio/AudioManager'
 import type { ArenaScenario } from '../../data/arenaScenarios'
+import { scenariosForType } from '../../data/arenaScenarios'
 import { buildScenarioSequence } from '../../engine/arenaSelection'
 import {
   applyScenarioSetup, buildWallActors,
   getPhysicsType, commentaryFor, tuningMul, tuningFlag,
+  type OutcomeKey,
 } from './scenarioAdapter'
 
 export type ArenaMatchStats = MatchStats
@@ -216,7 +218,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     return base.slice(0, legacy.length)
   })
   const totalMoments = scenarioSequence.length
-  const activeScenario = scenarioSequence[Math.min(momentIndex, scenarioSequence.length - 1)]
+  // chainOverride lets a SUCCESS on a set-piece routine play a follow-up scenario
+  // (e.g. short corner → cutback → shot) before the sequence advances.
+  const [chainOverride, setChainOverride] = useState<ArenaScenario | null>(null)
+  const activeScenario = chainOverride ?? scenarioSequence[Math.min(momentIndex, scenarioSequence.length - 1)]
   const activeMomentType: MomentType = getPhysicsType(activeScenario)
 
   const dragStart = useRef<{ x: number; y: number } | null>(null)
@@ -386,7 +391,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     }, introDuration)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [momentIndex])
+  }, [momentIndex, chainOverride])
 
   useEffect(() => { currentOutcomeRef.current = currentOutcome }, [currentOutcome])
 
@@ -409,68 +414,88 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     else if (['pass', 'corner'].includes(activeMomentType)) setMatchStats(s => ({ ...s, passes: s.passes + 1 }))
     else if (activeMomentType === 'tackle') setMatchStats(s => ({ ...s, tackles: s.tackles + 1 }))
 
+    // Outcome key feeds the scenario's commentary pool for the details line.
+    let outcomeKey: OutcomeKey | null = null
+    let goalQuality: 'topcorner' | 'chip' | 'tucked' | 'rising' | 'standard' | undefined
+
     if (b.inGoal) {
       const sv = shotVariantRef.current
       const quality = sv === 'chip' ? 'chip' : (b.goalQuality || 'standard')
-      const lines = GOAL_LINES[quality] || GOAL_LINES.standard
+      goalQuality = quality
       if (quality === 'topcorner') outcome = 'TOP CORNER'
       else if (quality === 'chip') outcome = 'CHIPPED HIM'
       else if (quality === 'tucked') outcome = 'TUCKED AWAY'
       else if (quality === 'rising') outcome = 'BANGER'
       else outcome = 'GOAL'
-      details = lines[Math.floor(Math.random() * lines.length)]
+      outcomeKey = 'goal'
       AudioManager.playGoal()
       navigator.vibrate?.([40, 20, 80])
       if (!reducedMotion) screenShakeRef.current = 14
       setMatchStats(s => ({ ...s, goals: s.goals + 1 }))
     } else if (b.hitBar) {
       outcome = 'CROSSBAR'
-      details = 'Cannons off the bar! Inches from a goal!'
+      outcomeKey = 'crossbar'
       AudioManager.playOoh()
       navigator.vibrate?.([20, 10, 20])
     } else if (b.hitPost) {
       outcome = 'WOODWORK'
-      details = 'Off the post! Agony, could have been a worldie.'
+      outcomeKey = 'woodwork'
       AudioManager.playOoh()
       navigator.vibrate?.([20, 10, 20])
     } else if (b.saved) {
       outcome = 'SAVED'
-      if (b.struck?.basePower > 0.85) details = 'Their keeper somehow gets a glove on it. Great save.'
-      else if (opponent.id === 'royal-oak-rovers') details = "Their keeper's a brick wall today, held easily."
-      else details = 'Keeper holds it. Decent shot, better save.'
+      outcomeKey = 'saved'
       AudioManager.playGroan()
       navigator.vibrate?.([15])
     } else if (b.intercepted && !manualOutcome) {
       outcome = 'INTERCEPTED'
-      details = activeMomentType === 'corner' ? 'Cleared by the first man. Bobbins delivery.' : 'Cut out by their defender. Hospital ball.'
+      outcomeKey = 'intercepted'
       AudioManager.playMiss()
     } else if (b.reachedTeammate && !manualOutcome) {
       outcome = 'SUCCESS'
-      const who = b.reachedTeammate.name || 'your man'
-      details = activeMomentType === 'corner'
-        ? `Whipped in beautifully, ${who} rose highest!`
-        : `Spot on. Right to ${who}'s feet.`
+      outcomeKey = 'success'
       AudioManager.playPing()
       setMatchStats(s => ({ ...s, passSuccess: s.passSuccess + 1 }))
+      // tap-in scenario: cushioned ball at the far post counts as a goal too
+      if (activeScenario.type === 'tapIn') {
+        outcome = 'GOAL'
+        outcomeKey = 'goal'
+        goalQuality = 'standard'
+        setMatchStats(s => ({ ...s, goals: s.goals + 1 }))
+      }
     } else if (!manualOutcome) {
       if (isShotMoment && b.nearMiss) {
         outcome = 'NEAR MISS'
-        details = NEARMISS_LINES[Math.floor(Math.random() * NEARMISS_LINES.length)]
+        outcomeKey = 'nearMiss'
         AudioManager.playOoh()
       } else if (activeMomentType === 'pass') {
         outcome = 'OVERHIT'
-        details = 'Too much on it. Sailed past everyone.'
+        outcomeKey = 'overhit'
         AudioManager.playMiss()
       } else if (activeMomentType === 'corner') {
         outcome = 'CLEARED'
-        details = 'Easy take for the keeper. Have another go.'
+        outcomeKey = 'cleared'
         AudioManager.playMiss()
       } else {
         AudioManager.playMiss()
       }
     } else {
-      if (['SUCCESS', 'GOAL'].includes(outcome)) AudioManager.playPing()
+      // Manual outcome: pick a sensible commentary key from the label.
+      const map: Record<string, OutcomeKey> = {
+        SUCCESS: 'success', GOAL: 'goal', RECOVERY: 'success',
+        EARLY: 'tooEarly', LATE: 'tooLate', BEATEN: 'beaten',
+        MISTIMED: 'mistimed', 'POOR TOUCH': 'poorTouch', BOBBLED: 'bobbled',
+        OVERHIT: 'overhit', INTERCEPTED: 'intercepted',
+      }
+      outcomeKey = map[outcome] ?? null
+      if (['SUCCESS', 'GOAL', 'RECOVERY'].includes(outcome)) AudioManager.playPing()
       else AudioManager.playMiss()
+    }
+
+    // Override fallback details with scenario-specific commentary where available.
+    if (outcomeKey) {
+      const line = commentaryFor(activeScenario, outcomeKey, goalQuality)
+      if (line) details = line
     }
 
     if (activeMomentType === 'tackle' && (outcome === 'SUCCESS' || outcome === 'RECOVERY')) {
@@ -488,7 +513,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     else setMomentum(m => Math.max(0, m - 10))
 
     setCurrentOutcome({ outcome, details, clampedValue })
-  }, [activeMomentType, opponent.id, reducedMotion])
+  }, [activeMomentType, activeScenario, reducedMotion])
 
   const handleInput = useCallback((accuracy: number, power: number, angle: number, curl: number, variant: ShotVariant) => {
     if (simulationFinished.current) return
@@ -502,8 +527,13 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
     navigator.vibrate?.([12])
 
-    const info = MOMENT_INFO[activeMomentType]
-    const relevantStat = (playerStats as any)[info.stat] || 10
+    const relevantStat = (playerStats as any)[activeScenario.statKey] || 10
+    // Scenario tuning multipliers, used below for power/curl caps.
+    const sPowerCap = tuningMul(activeScenario, 'powerCapMul', 1)
+    const sCurlMul = tuningMul(activeScenario, 'curlMul', 1)
+    let effectiveVariant: ShotVariant = variant
+    if (tuningFlag(activeScenario, 'panenkaMode')) effectiveVariant = 'chip'
+    if (tuningFlag(activeScenario, 'driveOnlyMode')) effectiveVariant = 'driven'
     const statMod = statBoost(relevantStat)
     const vibesMod = statBoost(playerStats.vibes || 10) * 0.5
     const paceMomentTypes: MomentType[] = ['shot', 'penalty', 'freekick', 'header', 'corner']
@@ -588,44 +618,44 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     }, 4500)
 
     if (activeMomentType === 'shot' || activeMomentType === 'penalty') {
-      const p = Math.min(effectivePower, VARIANT_POWER_CAP[variant])
+      const p = Math.min(effectivePower, VARIANT_POWER_CAP[effectiveVariant] * sPowerCap)
       ball.current.vx = Math.cos(angle) * p * 16
-      ball.current.vy = Math.sin(angle) * p * 16 * VARIANT_VY[variant]
-      ball.current.vz = p * VARIANT_VZ[variant]
-      ball.current.curl = finalCurl * VARIANT_CURL_MULT[variant]
+      ball.current.vy = Math.sin(angle) * p * 16 * VARIANT_VY[effectiveVariant]
+      ball.current.vz = p * VARIANT_VZ[effectiveVariant]
+      ball.current.curl = finalCurl * VARIANT_CURL_MULT[effectiveVariant] * sCurlMul
       penaltyHistoryRef.current = [...penaltyHistoryRef.current.slice(-1), ball.current.x + Math.cos(angle) * 100]
     } else if (activeMomentType === 'header') {
       const b = ball.current
       const headStatMod = statBoost(playerStats.head)
-      const winLow = 15 - headStatMod * 15
-      const winHigh = 110 + headStatMod * 20
+      const winLow = (activeScenario.tuning?.headerZoneLo ?? 15 - headStatMod * 15)
+      const winHigh = (activeScenario.tuning?.headerZoneHi ?? 110 + headStatMod * 20)
       if (b.z <= winLow || b.z >= winHigh) {
         b.active = false
         resolveSimulationOutcome({ outcome: 'MISTIMED', details: 'Mistimed your jump, ball squirms over your head.' })
         return
       }
       navigator.vibrate?.([8, 20, 15])
-      const sweetLow = 40 - headStatMod * 10
-      const sweetHigh = 80 + headStatMod * 15
+      const sweetLow = (activeScenario.tuning?.headerSweetLo ?? 40 - headStatMod * 10)
+      const sweetHigh = (activeScenario.tuning?.headerSweetHi ?? 80 + headStatMod * 15)
       const sweetSpot = b.z > sweetLow && b.z < sweetHigh
-      const headerPower = sweetSpot ? effectivePower : effectivePower * 0.7
+      const headerPower = (sweetSpot ? effectivePower : effectivePower * 0.7) * sPowerCap
       b.vx = Math.cos(angle) * headerPower * 16
       b.vy = Math.sin(angle) * headerPower * 16
       b.vz = -headerPower * 2.5
-      b.curl = finalCurl
+      b.curl = finalCurl * sCurlMul
     } else if (activeMomentType === 'freekick') {
-      const p = Math.min(effectivePower, VARIANT_POWER_CAP[variant])
+      const p = Math.min(effectivePower, VARIANT_POWER_CAP[effectiveVariant] * sPowerCap)
       ball.current.vx = Math.cos(angle) * p * 16
-      ball.current.vy = Math.sin(angle) * p * 16 * VARIANT_VY[variant]
-      ball.current.vz = p * VARIANT_VZ[variant]
-      ball.current.curl = finalCurl * VARIANT_CURL_MULT[variant]
+      ball.current.vy = Math.sin(angle) * p * 16 * VARIANT_VY[effectiveVariant]
+      ball.current.vz = p * VARIANT_VZ[effectiveVariant]
+      ball.current.curl = finalCurl * VARIANT_CURL_MULT[effectiveVariant] * sCurlMul
       wallJumpedRef.current = false
     } else if (activeMomentType === 'pass') {
-      ball.current.vx = Math.cos(angle) * effectivePower * 11
-      ball.current.vy = Math.sin(angle) * effectivePower * 11
+      ball.current.vx = Math.cos(angle) * effectivePower * 11 * sPowerCap
+      ball.current.vy = Math.sin(angle) * effectivePower * 11 * sPowerCap
       ball.current.vz = effectivePower * 1.5
-      ball.current.curl = finalCurl * 0.5
-      const coneHalf = Math.PI / 4
+      ball.current.curl = finalCurl * 0.5 * sCurlMul
+      const coneHalf = activeScenario.tuning?.passConeRad ?? Math.PI / 4
       let hasTarget = false
       for (const n of fieldNPCs.current) {
         if (n.type !== 'teammate') continue
@@ -637,10 +667,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         scheduleMomentTimeout(() => resolveSimulationOutcome({ outcome: 'OVERHIT', details: "Into no-man's-land. No one on the end of that." }), 1200)
       }
     } else if (activeMomentType === 'corner') {
-      ball.current.vx = Math.cos(angle) * effectivePower * 12
-      ball.current.vy = Math.sin(angle) * effectivePower * 12
+      ball.current.vx = Math.cos(angle) * effectivePower * 12 * sPowerCap
+      ball.current.vy = Math.sin(angle) * effectivePower * 12 * sPowerCap
       ball.current.vz = effectivePower * 6
-      ball.current.curl = finalCurl
+      ball.current.curl = finalCurl * sCurlMul
     } else if (activeMomentType === 'touch') {
       ball.current.vx = ball.current.vx * 0.2 + Math.cos(angle) * effectivePower * 4
       ball.current.vy = ball.current.vy * 0.2 + Math.sin(angle) * effectivePower * 4
@@ -690,7 +720,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }, baseDelay + 250)
     }
-  }, [activeMomentType, activeCards, energy, momentum, playerStats, playerTraits, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, reducedMotion])
+  }, [activeMomentType, activeScenario, activeCards, energy, momentum, playerStats, playerTraits, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, reducedMotion])
 
   const updateSimulation = useCallback(() => {
     const b = ball.current
@@ -1300,18 +1330,22 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
     if (readyPhaseRef.current === 'intro') {
       c.fillStyle = 'rgba(28,25,23,0.55)'; c.fillRect(0, 0, 400, 400)
-      const info = MOMENT_INFO[activeMomentType]
       c.fillStyle = '#F59E0B'; c.font = 'bold 26px serif'; c.textAlign = 'center'
-      c.fillText(info.title, 200, 190)
+      c.fillText(activeScenario.title, 200, 190)
       c.fillStyle = '#FEF3C7'; c.font = '12px sans-serif'
-      c.fillText(`${info.statLabel}: ${(playerStats as any)[info.stat] || 10}`, 200, 215)
+      c.fillText(`${activeScenario.statLabel}: ${(playerStats as any)[activeScenario.statKey] || 10}`, 200, 215)
+      if (activeScenario.rarity === 'hero' || activeScenario.rarity === 'rare') {
+        c.fillStyle = activeScenario.rarity === 'hero' ? '#FBBF24' : '#A5F3FC'
+        c.font = 'italic bold 10px sans-serif'
+        c.fillText(activeScenario.rarity === 'hero' ? 'HERO MOMENT' : 'RARE CHANCE', 200, 228)
+      }
       c.fillStyle = `rgba(254,243,199,${0.4 + Math.sin(Date.now() / 200) * 0.3})`
-      c.font = 'bold 11px sans-serif'; c.fillText('GET READY', 200, 240)
+      c.font = 'bold 11px sans-serif'; c.fillText('GET READY', 200, 244)
     }
 
     // eslint-disable-next-line react-hooks/immutability
     requestRef.current = requestAnimationFrame(drawFrame)
-  }, [activeMomentType, weather, updateSimulation, playerStats, reducedMotion])
+  }, [activeMomentType, activeScenario, weather, updateSimulation, playerStats, reducedMotion])
 
   const getCanvasPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1401,8 +1435,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     }
   }, [momentIndex, drawFrame, clearMomentTimeouts])
 
-  const info = MOMENT_INFO[activeMomentType]
-  const relevantStatValue = (playerStats as any)[info.stat] || 10
+  const relevantStatValue = (playerStats as any)[activeScenario.statKey] || 10
   const isWin = currentOutcome && ['GOAL', 'TOP CORNER', 'CHIPPED HIM', 'TUCKED AWAY', 'BANGER', 'SUCCESS'].includes(currentOutcome.outcome)
   const isClose = currentOutcome && ['WOODWORK', 'CROSSBAR', 'NEAR MISS', 'SAVED'].includes(currentOutcome.outcome)
 
@@ -1412,10 +1445,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <div>
             <div style={{ fontSize: '10px', color: 'var(--kit-amber)', fontWeight: 'bold' }}>{fixture.kind === 'cup' ? 'TANKARD · ' : ''}MOMENT {momentIndex + 1}/{totalMoments} · vs {opponent.name.toUpperCase()}</div>
-            <div style={{ fontWeight: 'bold', fontSize: '14px', fontFamily: 'var(--font-primary)' }}>{info.title}</div>
+            <div style={{ fontWeight: 'bold', fontSize: '14px', fontFamily: 'var(--font-primary)' }}>{activeScenario.title}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <div style={{ fontSize: '9px', color: 'var(--kit-amber)', fontWeight: 'bold' }}>{info.statLabel}</div>
+            <div style={{ fontSize: '9px', color: 'var(--kit-amber)', fontWeight: 'bold' }}>{activeScenario.statLabel}</div>
             <div style={{ fontSize: '20px', fontWeight: 'bold', fontFamily: 'var(--font-primary)', lineHeight: 1 }}>{relevantStatValue}</div>
           </div>
         </div>
@@ -1439,7 +1472,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         <canvas
           ref={canvasRef}
           role="img"
-          aria-label={`Match moment: ${info.title} vs ${opponent.name}`}
+          aria-label={`Match moment: ${activeScenario.title} vs ${opponent.name}`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -1482,6 +1515,20 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
               onClick={() => {
                 const nextResults = [...momentResults, { type: activeMomentType, value: currentOutcome.clampedValue, outcome: currentOutcome.outcome, clampedValue: currentOutcome.clampedValue }]
                 setMomentResults(nextResults)
+                // Chained follow-up: if a routine succeeds and the scenario hints at a next phase,
+                // play one chained scenario before moving to the planned next moment.
+                const winOutcomes = ['GOAL', 'TOP CORNER', 'CHIPPED HIM', 'TUCKED AWAY', 'BANGER', 'SUCCESS']
+                const isWinOutcome = winOutcomes.includes(currentOutcome.outcome)
+                const chainHint = !chainOverride && isWinOutcome ? activeScenario.setup.chainHint : undefined
+                if (chainHint) {
+                  const candidates = scenariosForType(chainHint).filter(s => s.rarity === 'common' || s.rarity === 'uncommon')
+                  if (candidates.length > 0) {
+                    const chained = candidates[Math.floor(Math.random() * candidates.length)]
+                    setChainOverride(chained)
+                    return
+                  }
+                }
+                setChainOverride(null)
                 if (momentIndex < totalMoments - 1) setMomentIndex(momentIndex + 1)
                 else onCompleteMatch(nextResults, matchStats)
               }}
@@ -1520,7 +1567,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       </div>
 
       <div style={{ marginTop: '16px', fontSize: '14px', color: 'var(--charcoal)', textAlign: 'center', background: 'var(--cream)', padding: '12px', borderRadius: '8px', border: '2px solid var(--border)' }}>
-        {!currentOutcome ? info.instruction : 'Moment complete.'}
+        {!currentOutcome ? activeScenario.instruction : 'Moment complete.'}
       </div>
     </ScreenContainer>
   )
