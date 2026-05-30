@@ -5,10 +5,10 @@
 | Layer | Technology | Purpose |
 | --- | --- | --- |
 | **Frontend framework** | Vite + React + TypeScript | UI, game loop, match moments |
-| **Hosting & CDN** | AWS Amplify | Build, deploy, global CDN |
-| **Real-time sync** | API Gateway WebSocket + Lambda + DynamoDB | Discord audience voting |
+| **Hosting & CDN** | Firebase Hosting | Build, deploy, global CDN |
+| **Real-time sync** | Cloud Firestore listeners + Cloud Functions (future) | Discord audience voting |
 | **Local persistence** | localStorage | Career saves, settings |
-| **Cloud persistence** | DynamoDB (future) | Cloud saves, Hall of Fame sync |
+| **Cloud persistence** | Cloud Firestore (future) | Cloud saves, Hall of Fame sync |
 | **Platform adapter** | Discord Embedded App SDK | Identity, presence, iframe comms |
 
 ---
@@ -127,83 +127,78 @@ No CSS framework. The existing design system (CSS custom properties + utility cl
 
 ---
 
-## Hosting: AWS Amplify
+## Hosting: Firebase Hosting
 
-AWS Amplify hosts the static Vite build output (HTML, JS, CSS, assets) on CloudFront with global edge distribution.
+Firebase Hosting serves the static Vite build output (HTML, JS, CSS, assets) from a global CDN with automatic SSL.
 
-### Why Amplify over raw S3 + CloudFront
+Configuration lives in `firebase.json` (committed to the repo), so the SPA rewrite, security headers (CSP, X-Frame-Options, etc.) and cache-control are version-controlled and actually applied, unlike the earlier setup where header files targeted a platform that ignored them.
 
-Amplify wraps S3 + CloudFront with a managed CI/CD layer. Connect a GitHub repository, and every push to `main` triggers a build and deploy automatically, including CloudFront cache invalidation. SSL, custom domains, and branch previews are all handled without manual configuration.
+### Deploy
 
-### Why AWS over Firebase
+`firebase init hosting:github` wires a GitHub Action that builds and deploys on every push to `main`, plus per-PR preview channels. A manual deploy is `npm run deploy:hosting`.
 
-Firebase's JavaScript SDK dynamically injects scripts at runtime. Discord enforces strict Content Security Policy (CSP) inside its Activity iframe, which blocks this injection. This is a documented, confirmed conflict , teams that have shipped Discord Activities on Firebase have had to pre-download and vendor every Firebase SDK file into their build to work around it. That workaround grows in maintenance cost with every SDK update.
+### The Discord CSP point (important correction)
 
-AWS Amplify serves plain static files with no runtime script injection. No CSP conflict.
+An earlier version of this stack ruled Firebase out, citing the Firebase JavaScript SDK injecting scripts at runtime and conflicting with Discord's strict Activity-iframe CSP. That concern is about the **client SDK**, not about **Hosting**:
+
+- **Firebase Hosting** serves plain static files with no runtime script injection. There is no CSP conflict, and it is safe inside the Discord iframe. (This migration only changes hosting.)
+- The **Firebase client SDK** (Auth, Firestore) is only relevant later, for cloud save and realtime. The modern modular v9+ SDK is bundled into our own Vite output, so Firestore and core Auth do not inject scripts and work under a strict CSP. The features that DO inject scripts or use `eval`/popups, namely Firebase Analytics, reCAPTCHA-backed phone auth, and popup OAuth flows, must be avoided inside the Discord iframe (use redirect/token auth and skip Analytics there).
+
+So Firebase is CSP-safe for hosting now, and CSP-safe for the planned Firestore/Auth backend provided we stick to the modular SDK and avoid the script-injecting extras.
 
 ### Free tier
 
-Amplify's free tier is permanent (not time-limited): 1,000 build minutes per month, 15GB bandwidth per month, 5GB storage. At indie scale this is unlikely to be exceeded.
-
-Beyond the free tier: $0.01 per build minute, $0.15 per GB bandwidth.
+Firebase Hosting (Spark plan) is free and not time-limited: 10GB storage and 360MB/day egress, which comfortably covers indie scale. Firestore and Functions have their own generous free tiers when the backend is added.
 
 ---
 
-## Real-time sync: API Gateway WebSocket + Lambda + DynamoDB
+## Real-time sync: Cloud Firestore (future)
 
-Used for Discord audience voting. Not needed for solo play.
+Used for Discord audience voting and the global daily-challenge leaderboard. Not needed for solo play.
 
 ### How it works
 
-Each Discord Activity session (a group in a voice channel) creates a session ID. All participants (host + spectators) open a WebSocket connection to the same API Gateway endpoint. A DynamoDB table stores active connection IDs keyed on session ID. When the host triggers a vote, a Lambda broadcasts the prompt to all connections. When spectators vote, their choices are tallied and the result is broadcast back.
+Each Discord Activity session (a group in a voice channel) maps to a Firestore document, e.g. `sessions/{sessionId}`. Every participant subscribes to that document with a realtime listener (`onSnapshot`). When the host opens a vote, they write the prompt into the document; all clients receive the update instantly. Spectators write their choice into a `votes` subcollection; a small Cloud Function (or a client-side tally with security rules) aggregates and writes the result back, which again propagates to every listener.
 
 ```text
-Discord client (host)         Discord clients (spectators)
-       │                              │
-       └──────── WebSocket ───────────┘
+Discord client (host)        Discord clients (spectators)
+       │                             │
+       │   onSnapshot listeners      │
+       └─────────────┬───────────────┘
                      │
-           API Gateway WebSocket
+              Cloud Firestore
+         sessions/{id}  ← prompt, result
+         sessions/{id}/votes/{uid}
                      │
-        ┌────────────┼────────────┐
-        │            │            │
-   onConnect    onMessage    onDisconnect
-   (Lambda)     (Lambda)      (Lambda)
-        │            │            │
-        └────────────┴────────────┘
-                     │
-                 DynamoDB
-          (sessionId → connectionIds[])
-```text
+           (optional) Cloud Function
+             tallies votes on write
+```
+
+This replaces the previous API Gateway WebSocket + Lambda + DynamoDB design: Firestore's realtime listeners remove all the connection-management and broadcast plumbing, so there is far less to build and operate.
 
 ### Why this over alternatives
 
-**Cloudflare Durable Objects** would also work well and is arguably more elegant. AWS is chosen here for ecosystem consistency , hosting, sync, and future cloud saves all under one account and one billing dashboard.
+**Firestore realtime listeners** give push updates, offline buffering, and security-rule-based auth out of the box. Identity comes from Firebase Auth signed in with the Discord OAuth token, so a player is the same across sessions and devices.
 
-**Partykit** (built on Cloudflare) is a higher-level abstraction for exactly this pattern. Worth revisiting if AWS complexity becomes a concern.
+**Cloudflare Durable Objects / Partykit** remain elegant alternatives for the pure broadcast pattern, but keeping hosting, auth, realtime, and cloud saves in one Firebase project (one console, one billing dashboard) is the deciding factor.
 
-**Firebase Realtime Database** is ruled out for the CSP reasons above.
+### CSP note
 
-### Infrastructure definition
-
-All three Lambda functions and the DynamoDB table are defined in a single `template.yaml` using AWS SAM. One command (`sam deploy`) creates the full backend stack. No manual console configuration.
+The modular Firebase v9+ SDK is bundled by Vite, so Firestore and token-based Auth run inside the Discord iframe without script injection. Avoid Firebase Analytics and popup/reCAPTCHA auth flows inside the iframe (see the Hosting section).
 
 ### Cost at indie scale
 
-API Gateway WebSocket: 1 million messages free per month, then $1.00 per million.
-Lambda: 1 million requests free per month.
-DynamoDB: 25GB storage free, 200M requests free per month (on-demand).
-
-A typical SLL session involves 10-20 WebSocket connections and a few hundred messages. The free tier covers this comfortably into the thousands of sessions per month.
+Firestore free tier (Spark): 1GB storage, 50k document reads / 20k writes / 20k deletes per day. A typical session is a handful of documents and a few hundred reads/writes; this covers thousands of sessions per month before any paid usage.
 
 ---
 
 ## Local persistence
 
-Career saves, Hall of Fame, and settings are stored in `localStorage` using the existing v2 schema with migration logic. This requires no network, works offline, and is already implemented.
+Career saves, Hall of Fame, and settings are stored in `localStorage` with migration logic. This requires no network, works offline, and is already implemented. A future Firestore cloud save would sync this same state for signed-in players, with localStorage remaining the offline source of truth.
 
-Save key: `sll_save_v3`
+Save key: `sll_save_v5`
 
-Schema versioning is in place. Future migrations follow the existing v1/v2 → v3 pattern.
+Schema versioning is in place. Future migrations follow the existing v1/v2/v3/v4 → v5 pattern.
 
 ---
 
@@ -242,10 +237,10 @@ UI components are not unit tested at this stage. Manual device testing covers th
 | --- | --- |
 | Next.js | SSR framework, wrong fit for a client-side game in an iframe |
 | Vue / SvelteKit | Would require rewriting all existing components |
-| Firebase | CSP conflict with Discord Activity iframe (documented) |
-| GCP | User preference; Firebase CSP issue reinforces avoidance |
-| Cloudflare stack | Good alternative; AWS chosen for single-account consistency |
-| Raw S3 + CloudFront | Amplify is simpler with equivalent capability at this scale |
+| AWS Amplify | Previously used; migrated to Firebase to keep hosting, auth, realtime and cloud saves in one ecosystem |
+| AWS API Gateway + Lambda + DynamoDB | Firestore realtime listeners replace the WebSocket/broadcast plumbing with far less to build |
+| Cloudflare stack / Partykit | Good alternatives; Firebase chosen for single-project consistency |
+| Firebase Analytics / popup auth inside Discord | Inject scripts / use popups; conflict with the Discord iframe CSP. Use token auth and skip Analytics there |
 | Colyseus | Overkill for a voting/broadcast pattern; no persistent game state needed server-side |
 
 ---

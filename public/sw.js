@@ -1,27 +1,47 @@
-const CACHE = 'sll-v1'
+const CACHE = 'sll-v2'
+const PRECACHE = ['/', '/manifest.json', '/favicon.svg']
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/', '/manifest.json', '/favicon.svg'])))
-  self.skipWaiting()
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+  )
 })
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return
+  const req = e.request
+  if (req.method !== 'GET') return
+
+  // Network-first for the app shell (navigations) so a new deploy is picked up
+  // immediately. Fall back to the cached shell only when offline.
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          const copy = res.clone()
+          caches.open(CACHE).then(c => c.put('/', copy)).catch(() => {})
+          return res
+        })
+        .catch(() => caches.match('/').then(r => r || caches.match(req)))
+    )
+    return
+  }
+
+  // Cache-first for hashed, immutable assets and other same-origin GETs.
   e.respondWith(
-    caches.match(e.request).then(cached => {
+    caches.match(req).then(cached => {
       if (cached) return cached
-      return fetch(e.request).then(res => {
-        if (res.ok && e.request.url.startsWith(self.location.origin)) {
-          caches.open(CACHE).then(c => c.put(e.request, res.clone()))
+      return fetch(req).then(res => {
+        if (res.ok && req.url.startsWith(self.location.origin)) {
+          const copy = res.clone()
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {})
         }
         return res
       })
