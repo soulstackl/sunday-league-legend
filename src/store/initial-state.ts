@@ -26,6 +26,8 @@ export const initialSaveState: SaveState = {
     aiTable: [],
     cupExited: false,
     cupWon: false,
+    nemesisOpponentId: null,
+    achievements: [],
   },
   npcs: {
     pete:       { relationshipScore: 50, events: [] },
@@ -54,5 +56,11 @@ export const initialSaveState: SaveState = {
     oppositionScouted: false,
     setPieceReady: false,
     hangoverPending: false,
+  },
+  objectives: {
+    short: null,
+    medium: null,
+    long: null,
+    completedThisSeason: [],
   },
 }

@@ -33,6 +33,14 @@ import {
   getOvertimeFatigueReduction,
 } from './engine/traits'
 import { applyJobWeeklyTick } from './engine/jobs-weekly'
+import {
+  assignInitialObjectives,
+  rotateShortObjective,
+  checkObjectivesAfterMatch,
+  checkLongObjectiveAtSeasonEnd,
+} from './engine/objectives'
+import { checkAchievementsAfterMatch, checkAchievementsAtSeasonEnd } from './engine/achievements'
+import { findAchievement } from './data/achievements'
 
 import { TitleScreen } from './screens/TitleScreen'
 import { NameScreen } from './screens/NameScreen'
@@ -116,7 +124,9 @@ export function App() {
   const [tableCanAdvance, setTableCanAdvance] = useState(false)
 
   useEffect(() => {
-    platformAdapter.init().then(() => setPlatform({ isDiscord: platformAdapter.isDiscord }))
+    platformAdapter.init()
+      .then(() => setPlatform({ isDiscord: platformAdapter.isDiscord }))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -134,8 +144,13 @@ export function App() {
     setStoreRaw(prev => {
       const next = deepClone(prev)
       updater(next)
-      saveGame(next)
-      if (!opts.silent) {
+      const saved = saveGame(next)
+      if (!saved) {
+        setTimeout(() => {
+          setToast('Save failed. Check device storage.')
+          setTimeout(() => setToast(null), 4000)
+        }, 0)
+      } else if (!opts.silent) {
         setToast('Saved')
         setTimeout(() => setToast(null), 1000)
       }
@@ -274,6 +289,34 @@ export function App() {
 
       s.careerEvents.push({ type: 'match_complete', week, result: won ? 'win' : drew ? 'draw' : 'loss' })
 
+      // Nemesis tracking: if this opponent has beaten us twice, they become the nemesis.
+      if (!won && !drew) {
+        const lossesToThisOpp = s.season.results.filter(r => r.opponentId === opponent.id && r.ourGoals < r.theirGoals).length
+        if (lossesToThisOpp >= 2) s.season.nemesisOpponentId = opponent.id
+      }
+      // Nemesis revenge: if we beat our nemesis, celebrate in chat.
+      if (won && s.season.nemesisOpponentId === opponent.id) {
+        s.groupChatLog.push({ sender: 'system', text: `REVENGE. ${opponent.name} put to the sword at last. The dog bites back.`, time: 'FT' })
+      }
+
+      // Objective rewards: check and apply after match result is recorded.
+      const completedObjectives = checkObjectivesAfterMatch(s)
+      for (const { completedId, definition } of completedObjectives) {
+        s.objectives.completedThisSeason.push(completedId)
+        if (definition.reward.stat) s.player.stats[definition.reward.stat] = Math.min(20, s.player.stats[definition.reward.stat] + 1)
+        if (definition.reward.confidence) s.player.states.confidence = clamp(s.player.states.confidence + definition.reward.confidence, 0, 100)
+        if (definition.reward.teamChemistry) s.player.states.teamChemistry = clamp(s.player.states.teamChemistry + definition.reward.teamChemistry, 0, 100)
+        s.groupChatLog.push({ sender: 'system', text: `Objective complete: ${definition.title}. Reward: ${definition.reward.label}.`, time: 'FT' })
+      }
+      // Achievement unlocks.
+      const chaosCount = activeCards.length
+      const newAchievements = checkAchievementsAfterMatch(s, chaosCount)
+      for (const id of newAchievements) {
+        s.season.achievements.push(id)
+        const ach = findAchievement(id)
+        if (ach) s.groupChatLog.push({ sender: 'system', text: `${ach.emoji} Achievement unlocked: ${ach.title} — ${ach.description}`, time: 'FT' })
+      }
+
       const templates = won ? MESSAGE_TEMPLATES.postMatchWin : drew ? MESSAGE_TEMPLATES.postMatchDraw : MESSAGE_TEMPLATES.postMatchLoss
       templates.forEach(t => s.groupChatLog.push({ ...t }))
     })
@@ -348,6 +391,7 @@ export function App() {
 
         applyWeeklyTraitTick(s)
         applyJobWeeklyTick(s)
+        rotateShortObjective(s)
 
         const newSubs = subplotsToTriggerThisWeek(s.season.week, s.subplots)
         for (const sub of newSubs) {
@@ -386,6 +430,7 @@ export function App() {
       cupWon: store.season.cupWon,
       finalTier: promo.newTier,
       signatureTrait: pickSignatureTrait(store.player.traits),
+      achievements: [...store.season.achievements],
     }
     const hof = [...store.hallOfFame, entry]
     const fresh = deepClone(initialSaveState)
@@ -423,6 +468,22 @@ export function App() {
     const promo = resolvePromotionRelegation(position, standings.length, store.season.tier)
 
     updateStore(s => {
+      // Season-end achievements and long objective before resetting state.
+      const seasonAchs = checkAchievementsAtSeasonEnd(s, position, standings.length)
+      for (const id of seasonAchs) {
+        if (!s.season.achievements.includes(id)) {
+          s.season.achievements.push(id)
+          const ach = findAchievement(id)
+          if (ach) s.groupChatLog.push({ sender: 'system', text: `${ach.emoji} Achievement unlocked: ${ach.title}`, time: 'EOY' })
+        }
+      }
+      const longResult = checkLongObjectiveAtSeasonEnd(s, position, standings.length)
+      if (longResult) {
+        s.objectives.completedThisSeason.push(longResult.completedId)
+        if (longResult.definition.reward.stat) s.player.stats[longResult.definition.reward.stat] = Math.min(20, s.player.stats[longResult.definition.reward.stat] + 1)
+        if (longResult.definition.reward.confidence) s.player.states.confidence = clamp(s.player.states.confidence + longResult.definition.reward.confidence, 0, 100)
+      }
+
       s.careerEvents.push({ type: 'season_summary', week: s.season.week, result: promo.movement, pts: standings.find(r => r.isUs)?.points })
       s.season.number += 1
       s.season.tier = promo.newTier
@@ -430,6 +491,8 @@ export function App() {
       s.season.results = []
       s.season.cupExited = false
       s.season.cupWon = false
+      s.season.nemesisOpponentId = null
+      s.season.achievements = []
       s.season.aiTable = initialTable(s.season.tier)
       s.groupChatLog = []
       s.chaosCardHistory = []
@@ -440,6 +503,10 @@ export function App() {
       s.player.states.confidence = 55
       s.player.states.form = 0
       s.player.states.injuryRisk = Math.max(0, s.player.states.injuryRisk - 30)
+
+      // Fresh objectives for new season.
+      s.objectives = { short: null, medium: null, long: null, completedThisSeason: [] }
+      assignInitialObjectives(s)
     })
     setPendingStatGrowth(true)
     setGrowthChoices(deriveGrowthOffers(store))
@@ -513,6 +580,8 @@ export function App() {
             })
           })
           setCurrentScreen('intro')
+          // Assign opening objectives once player has chosen job (full profile known).
+          updateStore(s => { assignInitialObjectives(s) }, { silent: true })
         }} />
       )}
 
@@ -639,7 +708,7 @@ export function App() {
       )}
 
       {toast && (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', animation: 'fadeIn 0.2s ease', zIndex: 999 }}>
+        <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: toast.startsWith('Save failed') ? 'var(--danger)' : 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', animation: 'fadeIn 0.2s ease', zIndex: 999 }}>
           {toast}
         </div>
       )}

@@ -42,7 +42,16 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
   const [appliedChoiceEffects, setAppliedChoiceEffects] = useState<ChaosCardChoice['effect'][]>([])
   const [choiceOutcome, setChoiceOutcome] = useState<string | null>(null)
 
-  if (cards.length === 0) return null
+  if (cards.length === 0) {
+    return (
+      <div style={{ padding: '40px 20px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', marginBottom: '20px' }}>No chaos cards available. Head straight to the match.</p>
+        <button onClick={() => onKickOff([], [])} style={{ padding: '16px 32px', background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700, cursor: 'pointer' }}>
+          KICK OFF
+        </button>
+      </div>
+    )
+  }
   const current = cards[currentIndex]
   const proceedDisabled = !flipped || (current.choices && !choiceMade)
 
@@ -103,7 +112,7 @@ export function ChaosScreen({ store, fixture, onKickOff }: ChaosScreenProps) {
               {current.choices && !choiceMade && flipped && (
                 <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {current.choices.map((c, i) => (
-                    <button key={i} onClick={() => {
+                    <button key={c.text ?? i} onClick={() => {
                       setChoiceMade(true)
                       setChoiceOutcome(c.outcome)
                       setAppliedChoiceEffects(prev => [...prev, c.effect])

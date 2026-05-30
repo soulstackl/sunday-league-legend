@@ -16,9 +16,6 @@ function detectMode(): 'discord' | 'standalone' {
 export const platformAdapter: PlatformAdapter = {
   isDiscord: detectMode() === 'discord',
   async init() {
-    if (this.isDiscord) {
-      console.log('Discord Activity Mode Initialised')
-    }
   },
   async getUser() {
     return null

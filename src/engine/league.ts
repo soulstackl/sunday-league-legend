@@ -150,7 +150,8 @@ export function buildStandings(
 }
 
 export function ourLeaguePosition(rows: StandingsRow[]): number {
-  return rows.findIndex(r => r.isUs) + 1
+  const idx = rows.findIndex(r => r.isUs)
+  return idx === -1 ? rows.length : idx + 1
 }
 
 export interface PromotionOutcome {

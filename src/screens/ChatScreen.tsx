@@ -43,7 +43,7 @@ export function ChatScreen({ store, onSendMessage, onBack, onChoice }: ChatScree
 
       <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
         {store.groupChatLog.map((msg, i) => (
-          <ChatBubble key={i} message={msg} onChoice={onChoice} />
+          <ChatBubble key={`${msg.sender}-${msg.time}-${i}`} message={msg} onChoice={onChoice} />
         ))}
       </div>
 
@@ -59,7 +59,7 @@ export function ChatScreen({ store, onSendMessage, onBack, onChoice }: ChatScree
         <button
           onClick={handleSend}
           aria-label="Send message"
-          style={{ width: '40px', height: '40px', background: 'var(--btn-bg)', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          style={{ width: '44px', height: '44px', background: 'var(--btn-bg)', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
           <SendHorizontal size={16} color="white" />
         </button>

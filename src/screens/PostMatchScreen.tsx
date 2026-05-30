@@ -1,8 +1,113 @@
 import { useEffect, useState } from 'react'
+import { Share2 } from 'lucide-react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { mulberry32 } from '../engine/rng'
 import { cupRoundLabel } from '../data/cup'
 import type { SaveState, MatchStats } from '../types/game'
+
+async function shareNewspaper(data: {
+  headline: string
+  ourGoals: number
+  theirGoals: number
+  playerName: string
+  rating: number
+  result: 'win' | 'draw' | 'loss'
+  date: string
+}): Promise<void> {
+  const canvas = document.createElement('canvas')
+  canvas.width = 600
+  canvas.height = 380
+  const c = canvas.getContext('2d')
+  if (!c) return
+
+  const accent = data.result === 'win' ? '#22C55E' : data.result === 'draw' ? '#F0A830' : '#F43F5E'
+
+  c.fillStyle = '#FFFDF5'
+  c.fillRect(0, 0, 600, 380)
+
+  c.fillStyle = '#1a1a1a'
+  c.fillRect(0, 0, 600, 48)
+  c.fillStyle = '#FFFDF5'
+  c.font = 'bold 11px Georgia, serif'
+  c.textAlign = 'center'
+  c.letterSpacing = '4px'
+  c.fillText('THE SUNDAY LEAGUE WEEKLY', 300, 22)
+  c.font = '10px Georgia, serif'
+  c.letterSpacing = '0px'
+  c.fillStyle = 'rgba(255,255,255,0.6)'
+  c.fillText(`Est. 1982 · Price 50p · ${data.date}`, 300, 38)
+
+  c.fillStyle = accent
+  c.beginPath()
+  c.roundRect(24, 60, 552, 80, 8)
+  c.fill()
+  c.fillStyle = data.result === 'draw' ? '#0C0C10' : '#fff'
+  c.font = 'bold 64px sans-serif'
+  c.textAlign = 'center'
+  c.fillText(`${data.ourGoals}  :  ${data.theirGoals}`, 300, 122)
+
+  c.fillStyle = '#1a1a1a'
+  c.font = 'bold 18px Georgia, serif'
+  c.textAlign = 'center'
+  const words = data.headline.split(' ')
+  let line = ''
+  let y = 172
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word
+    if (c.measureText(test).width > 540 && line) {
+      c.fillText(line, 300, y)
+      line = word
+      y += 22
+    } else {
+      line = test
+    }
+  }
+  if (line) c.fillText(line, 300, y)
+  y += 28
+
+  c.strokeStyle = '#ccc'
+  c.lineWidth = 1
+  c.beginPath()
+  c.moveTo(24, y)
+  c.lineTo(576, y)
+  c.stroke()
+  y += 18
+
+  c.font = 'bold 13px Georgia, serif'
+  c.textAlign = 'left'
+  c.fillText('Player of the Match', 24, y)
+  c.font = 'bold 36px sans-serif'
+  c.fillText(`${data.rating}`, 24, y + 36)
+  c.font = '13px Georgia, serif'
+  c.fillStyle = '#555'
+  c.fillText('/10', 54, y + 36)
+  c.fillStyle = '#1a1a1a'
+  c.font = 'bold 15px sans-serif'
+  c.textAlign = 'right'
+  c.fillText(data.playerName, 576, y + 36)
+
+  c.fillStyle = '#555'
+  c.font = '11px Georgia, serif'
+  c.textAlign = 'center'
+  c.fillText('Sunday League Legend · sunday-league-legend.app', 300, 362)
+
+  const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'))
+  if (!blob) return
+
+  const file = new File([blob], 'match-report.png', { type: 'image/png' })
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: 'Sunday League Legend', text: data.headline })
+  } else if (navigator.share) {
+    await navigator.share({ title: 'Sunday League Legend', text: `${data.headline}\n${data.ourGoals} : ${data.theirGoals} · Rating ${data.rating}/10\n#SundayLeagueLegend` })
+  } else {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'match-report.png'
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+}
 
 interface MatchReportProp {
   ourGoals: number
@@ -150,12 +255,30 @@ export function PostMatchScreen({ store, matchReport, onContinue }: PostMatchScr
             </div>
           </div>
 
-          <button
-            onClick={onContinue}
-            style={{ marginTop: '18px', width: '100%', padding: '12px', background: '#1a1a1a', color: '#F5F0E6', border: 'none', borderRadius: '6px', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '14px', cursor: 'pointer', letterSpacing: '0.04em' }}
-          >
-            NEXT EDITION
-          </button>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '18px' }}>
+            <button
+              onClick={() => shareNewspaper({
+                headline,
+                ourGoals,
+                theirGoals,
+                playerName: store.player.name,
+                rating,
+                result: won ? 'win' : draw ? 'draw' : 'loss',
+                date: new Date().toLocaleDateString('en-GB'),
+              }).catch(() => {})}
+              aria-label="Share match report"
+              style={{ padding: '12px 14px', background: 'transparent', color: '#555', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, flexShrink: 0 }}
+            >
+              <Share2 size={14} />
+              Share
+            </button>
+            <button
+              onClick={onContinue}
+              style={{ flex: 1, padding: '12px', background: '#1a1a1a', color: '#F5F0E6', border: 'none', borderRadius: '6px', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '14px', cursor: 'pointer', letterSpacing: '0.04em' }}
+            >
+              NEXT EDITION
+            </button>
+          </div>
         </div>
       </div>
     </ScreenContainer>

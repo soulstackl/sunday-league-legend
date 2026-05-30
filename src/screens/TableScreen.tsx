@@ -77,14 +77,13 @@ export function TableScreen({ store, onContinue, onBack, canAdvance }: TableScre
       </div>
 
       <button
-        disabled={!canAdvance}
-        onClick={onContinue}
+        onClick={canAdvance ? onContinue : onBack}
         style={{
           width: '100%', padding: '16px',
-          background: canAdvance ? 'var(--btn-bg)' : 'var(--surface-raised)',
-          color: canAdvance ? 'var(--btn-text)' : 'var(--text-faint)',
+          background: 'var(--btn-bg)',
+          color: 'var(--btn-text)',
           border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
-          cursor: canAdvance ? 'pointer' : 'not-allowed',
+          cursor: 'pointer',
           letterSpacing: '0.04em', marginTop: 'auto',
         }}
       >

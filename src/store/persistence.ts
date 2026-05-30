@@ -1,16 +1,18 @@
 import type { SaveState } from '../types/game'
 import { SAVE_KEY, LEGACY_KEYS, initialSaveState } from './initial-state'
+import { TRAIT_REGISTRY } from '../engine/traits'
 
 export function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
 }
 
-export function saveGame(state: SaveState): void {
+export function saveGame(state: SaveState): boolean {
   try {
     const toSave: SaveState = { ...state, savedAt: Date.now() }
     localStorage.setItem(SAVE_KEY, JSON.stringify(toSave))
-  } catch (e) {
-    console.warn('Save failed', e)
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -36,24 +38,26 @@ function migrate(raw: unknown): SaveState | null {
 
   if (data.player) {
     const dedupedTraits = uniqueStrings(data.player.traits)
+    const validTraits = (dedupedTraits ?? base.player.traits).filter(t => TRAIT_REGISTRY[t] !== undefined)
     base.player = {
       ...base.player,
       ...data.player,
       stats: { ...base.player.stats, ...(data.player.stats ?? {}) },
       states: { ...base.player.states, ...(data.player.states ?? {}) },
-      traits: dedupedTraits ?? base.player.traits,
+      traits: validTraits,
     }
   }
   if (typeof data.seed === 'number') base.seed = data.seed
   if (typeof data.club === 'string') base.club = data.club
   if (data.season) {
+    const rawSeason = data.season as Partial<SaveState['season']> & Record<string, unknown>
     base.season = {
       ...base.season,
-      ...(data.season as Partial<SaveState['season']>),
-      number: (data.season as { number?: number }).number ?? 1,
-      tier: ((data.season as { tier?: 1 | 2 | 3 }).tier) ?? 3,
-      week: (data.season as { week?: number }).week ?? 1,
-      results: ((data.season as { results?: SaveState['season']['results'] }).results ?? []).map(r => ({
+      ...rawSeason,
+      number: rawSeason.number ?? 1,
+      tier: (rawSeason.tier as 1 | 2 | 3) ?? 3,
+      week: rawSeason.week ?? 1,
+      results: ((rawSeason.results ?? []) as SaveState['season']['results']).map(r => ({
         week: r.week,
         competition: r.competition ?? 'league',
         ourGoals: r.ourGoals,
@@ -65,9 +69,11 @@ function migrate(raw: unknown): SaveState | null {
         cupExit: r.cupExit,
         cupWin: r.cupWin,
       })),
-      aiTable: (data.season as { aiTable?: SaveState['season']['aiTable'] }).aiTable ?? [],
-      cupExited: (data.season as { cupExited?: boolean }).cupExited ?? false,
-      cupWon: (data.season as { cupWon?: boolean }).cupWon ?? false,
+      aiTable: (rawSeason.aiTable as SaveState['season']['aiTable']) ?? [],
+      cupExited: rawSeason.cupExited ?? false,
+      cupWon: rawSeason.cupWon ?? false,
+      nemesisOpponentId: (rawSeason.nemesisOpponentId as string | null) ?? null,
+      achievements: Array.isArray(rawSeason.achievements) ? (rawSeason.achievements as string[]) : [],
     }
   }
   if (data.npcs) {
@@ -92,6 +98,7 @@ function migrate(raw: unknown): SaveState | null {
       cupWon: h.cupWon ?? false,
       finalTier: (h.finalTier ?? 3) as 1 | 2 | 3,
       signatureTrait: h.signatureTrait,
+      achievements: Array.isArray(h.achievements) ? h.achievements : [],
     }))
   }
   if (data.settings) {
@@ -108,6 +115,18 @@ function migrate(raw: unknown): SaveState | null {
   const persistedCtx = (data as { contextModifiers?: Partial<SaveState['contextModifiers']> }).contextModifiers
   if (persistedCtx) {
     base.contextModifiers = { ...base.contextModifiers, ...persistedCtx }
+  }
+
+  const persistedObj = (data as { objectives?: Partial<SaveState['objectives']> }).objectives
+  if (persistedObj) {
+    base.objectives = {
+      short: persistedObj.short ?? null,
+      medium: persistedObj.medium ?? null,
+      long: persistedObj.long ?? null,
+      completedThisSeason: Array.isArray(persistedObj.completedThisSeason)
+        ? persistedObj.completedThisSeason
+        : [],
+    }
   }
 
   return base

@@ -1208,7 +1208,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       c.fillText('FIRST TOUCH', barX + barW / 2, barY - 6)
     }
 
-    const ballDrawRadius = b.radius + b.z / 15
+    const ballDrawRadius = Math.min(b.radius * 4, b.radius + b.z / 15)
     c.fillStyle = '#fff'
     c.beginPath(); c.arc(b.x, b.y - b.z, ballDrawRadius, 0, Math.PI * 2); c.fill()
     c.strokeStyle = '#000'; c.lineWidth = 1

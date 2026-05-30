@@ -2,9 +2,6 @@ import type { ChatMessage, SubplotProgress } from '../types/game'
 
 export interface SubplotStage {
   message: ChatMessage
-  // The stage advances next week, even without an explicit choice.
-  autoAdvance?: boolean
-  // When a choice is made, the resulting effect applies and the subplot resolves.
   resolves?: boolean
 }
 

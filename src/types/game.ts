@@ -213,6 +213,15 @@ export interface Season {
   aiTable: AiTeamRecord[]
   cupExited: boolean
   cupWon: boolean
+  nemesisOpponentId: string | null
+  achievements: string[]
+}
+
+export interface ObjectiveState {
+  short: string | null
+  medium: string | null
+  long: string | null
+  completedThisSeason: string[]
 }
 
 export interface SubplotProgress {
@@ -248,6 +257,7 @@ export interface HallOfFameEntry {
   cupWon: boolean
   finalTier: 1 | 2 | 3
   signatureTrait?: string
+  achievements: string[]
 }
 
 export interface SaveState {
@@ -265,6 +275,7 @@ export interface SaveState {
   settings: GameSettings
   subplots: SubplotProgress[]
   contextModifiers: ContextModifiers
+  objectives: ObjectiveState
 }
 
 export interface MatchReport {

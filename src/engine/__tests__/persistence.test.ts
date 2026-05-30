@@ -65,6 +65,7 @@ describe('saveGame / loadGame round-trip', () => {
       cupWon: false,
       finalTier: 2,
       signatureTrait: 'Electric Pace',
+      achievements: [],
     }]
     saveGame(state)
     const loaded = loadGame()

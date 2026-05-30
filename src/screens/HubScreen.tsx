@@ -2,6 +2,7 @@ import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Setti
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { StatusBar } from '../components/shared/StatusBar'
+import { ObjectivesWidget } from '../components/shared/ObjectivesWidget'
 import { ARCHETYPES } from '../data/archetypes'
 import { JOBS } from '../data/jobs'
 import { TIER_NAMES } from '../data/opponents'
@@ -126,6 +127,8 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
         <StatusBar label="Confidence" value={p.states.confidence} colour="var(--accent)" />
         <StatusBar label="Manager Trust" value={p.states.managerTrust} colour="var(--purple)" />
       </div>
+
+      <ObjectivesWidget objectives={store.objectives} />
 
       {/* Season totals */}
       <div style={{ background: 'var(--card-bg)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '14px' }}>

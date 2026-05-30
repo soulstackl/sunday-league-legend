@@ -82,7 +82,7 @@ export function MidweekScreen({ store, onConfirm, onBack, isDiscord }: MidweekSc
               aria-label={`Select midweek action: ${act.name}`}
               aria-pressed={isSel}
               onClick={() => { setSelected(act); setStatChoice(null); setNpcTarget(null) }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelected(act); setStatChoice(null); setNpcTarget(null) } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(act); setStatChoice(null); setNpcTarget(null) } }}
               style={{
                 background: isSel ? 'var(--surface-raised)' : 'var(--card-bg)',
                 border: isSel ? '1px solid var(--accent)' : '1px solid var(--border)',

@@ -4,6 +4,7 @@ import { Card } from '../components/shared/Card'
 import { TIER_NAMES } from '../data/opponents'
 import { ARCHETYPES } from '../data/archetypes'
 import { JOBS } from '../data/jobs'
+import { findAchievement } from '../data/achievements'
 import type { HallOfFameEntry } from '../types/game'
 
 interface HallOfFameScreenProps {
@@ -25,11 +26,11 @@ export function HallOfFameScreen({ hallOfFame, onBack }: HallOfFameScreenProps) 
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {sorted.map((career, i) => {
+        {sorted.map((career) => {
           const archetype = ARCHETYPES.find(a => a.id === career.archetype)?.name ?? (career.archetype || 'Unknown')
           const job = career.job ? (JOBS.find(j => j.id === career.job)?.name ?? career.job) : null
           return (
-            <Card key={i}>
+            <Card key={`${career.name}-${career.date}`}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>{career.name}</span>
                 <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 700 }}>{career.title}</span>
@@ -42,13 +43,33 @@ export function HallOfFameScreen({ hallOfFame, onBack }: HallOfFameScreenProps) 
                   {career.signatureTrait}
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-faint)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-faint)', marginBottom: career.achievements.length > 0 ? '8px' : '0' }}>
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{career.goals} goals · {career.points} pts</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   {career.cupWon && <Trophy size={11} style={{ color: 'var(--kit-amber)' }} />}
                   {new Date(career.date).toLocaleDateString('en-GB')}
                 </span>
               </div>
+              {career.achievements.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {career.achievements.slice(0, 8).map(id => {
+                    const ach = findAchievement(id)
+                    if (!ach) return null
+                    return (
+                      <span
+                        key={id}
+                        title={`${ach.title}: ${ach.description}`}
+                        style={{ fontSize: '16px', cursor: 'default' }}
+                      >
+                        {ach.emoji}
+                      </span>
+                    )
+                  })}
+                  {career.achievements.length > 8 && (
+                    <span style={{ fontSize: '11px', color: 'var(--text-faint)', alignSelf: 'center' }}>+{career.achievements.length - 8}</span>
+                  )}
+                </div>
+              )}
             </Card>
           )
         })}

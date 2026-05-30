@@ -54,7 +54,7 @@ const JOB_WEEKLY_HANDLERS: Record<string, JobWeeklyHandler> = {
     if (week <= 1 || week % 4 !== 0) return null
     return {
       mutate: (s) => {
-        s.player.states.fatigue = clamp(s.player.states.fatigue - 5, 0, 100)
+        s.player.states.fatigue = clamp(s.player.states.fatigue + 5, 0, 100)
         s.player.states.injuryRisk = clamp(s.player.states.injuryRisk + 5, 0, 100)
       },
       chat: { sender: 'system', text: 'Big route this week. Legs lighter, knees older.', time: 'Thu' },
