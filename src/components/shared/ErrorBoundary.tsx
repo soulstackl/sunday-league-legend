@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { captureException } from '../../lib/errorTracking'
+import { SAVE_KEY, LEGACY_KEYS } from '../../store/initial-state'
 
 interface Props {
   children: ReactNode
@@ -50,7 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
             TRY AGAIN
           </button>
           <button
-            onClick={() => { localStorage.removeItem('sll_save_v4'); window.location.reload() }}
+            onClick={() => {
+              try { [SAVE_KEY, ...LEGACY_KEYS].forEach(k => localStorage.removeItem(k)) } catch { /* storage unavailable */ }
+              window.location.reload()
+            }}
             style={{
               padding: '12px 28px', background: 'none', color: 'var(--text-muted)',
               border: '1px solid var(--border)', borderRadius: '12px', fontSize: '13px',

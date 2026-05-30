@@ -70,7 +70,6 @@ export interface ArenaScenarioSetup {
 
 export interface ArenaScenarioTuning {
   powerCapMul?: number
-  powerFloorMul?: number
   curlMul?: number
   goalWidthFactor?: number
   keeperReachMul?: number
@@ -88,7 +87,6 @@ export interface ArenaScenarioTuning {
   passConeRad?: number
   postOddsMul?: number
   defenderJumpRise?: number
-  resolveDelayMs?: number
   panenkaMode?: boolean
   driveOnlyMode?: boolean
   weakFoot?: boolean
@@ -645,7 +643,7 @@ export const ARENA_SCENARIOS: ArenaScenario[] = [
                { role: 'teammate', name: 'Big Taz', fixedX: 260, fixedY: 100 },
                { role: 'defender', fixedX: 230, fixedY: 120, radius: 15 },
                { role: 'defender', fixedX: 180, fixedY: 130, radius: 15 },
-             ] },
+             ], chainHint: 'tapIn' },
     commentaryKey: 'cornerFarPost',
   },
   {
@@ -858,7 +856,8 @@ export const ARENA_SCENARIOS: ArenaScenario[] = [
     statKey: 'engine', statLabel: 'ENGINE',
     rarity: 'hero', baseWeight: 1,
     gates: { fixtureKindIn: ['cup'] },
-    setup: { ball: { fixedX: 200, fixedY: 200 } },
+    setup: { ball: { fixedX: 200, fixedY: 200 },
+             actors: [{ role: 'attacker', fixedX: 200, fixedY: 95, radius: 18 }] },
     commentaryKey: 'keeperSave',
   },
 
@@ -885,8 +884,7 @@ export const ARENA_SCENARIOS: ArenaScenario[] = [
     statKey: 'touch', statLabel: 'TOUCH',
     rarity: 'uncommon', baseWeight: 3,
     gates: { minStat: { pace: 10 } },
-    setup: { ball: { fixedX: 200, fixedY: 160 },
-             actors: [{ role: 'attacker', fixedX: 200, fixedY: 60, vy: 3.5, radius: 20 }] },
+    setup: { ball: { fixedX: 200, fixedY: 160 } },
     tuning: { keeperReachMul: 0.75, keeperReactionMul: 0.65, goalWidthFactor: 1.2 },
     commentaryKey: 'oneVone',
   },
@@ -941,7 +939,7 @@ export const ARENA_SCENARIOS: ArenaScenario[] = [
                { role: 'teammate', name: 'Dazza',        fixedX: 200, fixedY: 195 },
                { role: 'teammate', name: 'Gav Two Yards', fixedX: 170, fixedY: 175 },
                { role: 'defender', fixedX: 220, fixedY: 140, radius: 15 },
-             ], chainHint: 'shot' },
+             ], chainHint: 'tapIn' },
     commentaryKey: 'cutback',
   },
   {
@@ -1139,7 +1137,8 @@ export const ARENA_SCENARIOS: ArenaScenario[] = [
     statKey: 'engine', statLabel: 'ENGINE',
     rarity: 'hero', baseWeight: 1,
     gates: { fixtureKindIn: ['cup'], cupRoundIn: ['semi-final', 'final'] },
-    setup: { ball: { fixedX: 200, fixedY: 200 } },
+    setup: { ball: { fixedX: 200, fixedY: 200 },
+             actors: [{ role: 'attacker', fixedX: 225, fixedY: 110, radius: 18 }] },
     tuning: { keeperReachMul: 1.15 },
     commentaryKey: 'keeperSave',
   },
@@ -1151,8 +1150,8 @@ export const ARENA_SCENARIOS: ArenaScenario[] = [
     statKey: 'head', statLabel: 'HEAD',
     rarity: 'hero', baseWeight: 1,
     gates: { fixtureKindIn: ['cup'] },
-    setup: { ball: { fixedX: 200, fixedY: 150, z: 55, vz: -1.3 } },
-    tuning: { headerZoneLo: 30, headerZoneHi: 85, headerSweetLo: 50, headerSweetHi: 75 },
+    setup: { ball: { fixedX: 200, fixedY: 150, z: 55, vz: -1.3 },
+             actors: [{ role: 'attacker', fixedX: 180, fixedY: 90, radius: 18 }] },
     commentaryKey: 'keeperSave',
   },
 ]

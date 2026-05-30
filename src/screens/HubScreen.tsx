@@ -1,4 +1,4 @@
-import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Settings, CheckCircle2, UserCircle2 } from 'lucide-react'
+import { CalendarDays, MessageCircle, Users, BarChart3, CircleDot, Trophy, Settings, CheckCircle2, UserCircle2, LineChart } from 'lucide-react'
 import { ScreenContainer } from '../components/shared/ScreenContainer'
 import { Badge } from '../components/shared/Badge'
 import { StatusBar } from '../components/shared/StatusBar'
@@ -22,10 +22,11 @@ interface HubScreenProps {
   onSquad: () => void
   onTable: () => void
   onPlayer: () => void
+  onCareer: () => void
   isDiscord: boolean
 }
 
-export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, onNextMatch, onHall, onSquad, onTable, onPlayer, isDiscord }: HubScreenProps) {
+export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, onNextMatch, onHall, onSquad, onTable, onPlayer, onCareer, isDiscord }: HubScreenProps) {
   const p = store.player
   const week = store.season.week
   const tierName = TIER_NAMES[store.season.tier]
@@ -223,7 +224,7 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
       </button>
 
       {/* Utility row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', alignItems: 'center' }}>
         <button
           aria-label="Open settings"
           onClick={onSettings}
@@ -231,6 +232,14 @@ export function HubScreen({ store, fixture, onMidweek, onGroupChat, onSettings, 
         >
           <Settings size={13} />
           Settings
+        </button>
+        <button
+          aria-label="View career stats"
+          onClick={onCareer}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-faint)', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+        >
+          <LineChart size={13} />
+          Career
         </button>
         <button
           aria-label="View Hall of Fame"

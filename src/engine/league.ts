@@ -51,8 +51,13 @@ export function advanceAiTable(
   for (let i = 0; i < half; i++) {
     const home = (weekIndex + i) % (n - 1)
     const away = (n - 1 - i + weekIndex) % (n - 1)
-    const a = i === 0 ? n - 1 : home
-    const b = away
+    let a = i === 0 ? n - 1 : home
+    let b = away
+    // Alternate home/away each round so no club is always at home. In particular
+    // the fixed team (slot a on round i === 0) would otherwise carry the home bonus
+    // every single round. On odd rounds we also turn the wrap-around fixture into the
+    // reverse of round 0 (home and away swapped) rather than an identical replay.
+    if (weekIndex % 2 === 1) { const t = a; a = b; b = t }
     if (a !== b) pairings.push([a, b])
   }
 

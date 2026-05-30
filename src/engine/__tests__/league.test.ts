@@ -15,6 +15,28 @@ describe('league engine', () => {
     expect(a).toEqual(b)
   })
 
+  it('plays a balanced full season where every club plays the same number of games', () => {
+    let table = initialTable(3)
+    const n = table.length
+    for (let round = 0; round < n; round++) {
+      table = advanceAiTable(table, 3, round, 999)
+    }
+    // Every club features in every round, so all play the same number of games.
+    const counts = new Set(table.map(r => r.played))
+    expect(counts.size).toBe(1)
+    expect(table.every(r => r.played === n)).toBe(true)
+  })
+
+  it('does not park the last club at home every round (home/away balance)', () => {
+    // Round 0 and the wrap-around round (n-1) share the same pairings; with the
+    // home/away parity fix the wrap-around is the reverse fixture, not an identical
+    // replay, so the two rounds must produce different records.
+    const n = initialTable(3).length
+    const round0 = advanceAiTable(initialTable(3), 3, 0, 555)
+    const wrap = advanceAiTable(initialTable(3), 3, n - 1, 555)
+    expect(wrap).not.toEqual(round0)
+  })
+
   it('builds standings with our team included and sorted by points', () => {
     const table = advanceAiTable(initialTable(3), 3, 0, 50)
     const results: MatchResult[] = [

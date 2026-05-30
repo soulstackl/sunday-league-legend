@@ -14,6 +14,9 @@ export interface SelectionContext {
   activeCards: ChaosCard[]
   momentum: number
   prevTypes: MomentType[]
+  // Seeded RNG so a match's scenario sequence is reproducible from the save seed,
+  // consistent with the rest of the engine. Falls back to Math.random if omitted.
+  rng?: () => number
 }
 
 const RARITY_WEIGHT: Record<Rarity, number> = {
@@ -87,10 +90,10 @@ function scenarioWeight(scenario: ArenaScenario, sctx: SelectionContext): number
   return w
 }
 
-function pickWeighted<T>(items: { item: T; weight: number }[]): T | null {
+function pickWeighted<T>(items: { item: T; weight: number }[], rng: () => number = Math.random): T | null {
   const total = items.reduce((s, x) => s + Math.max(0, x.weight), 0)
   if (total <= 0) return null
-  let r = Math.random() * total
+  let r = rng() * total
   for (const x of items) {
     r -= Math.max(0, x.weight)
     if (r <= 0) return x.item
@@ -101,7 +104,7 @@ function pickWeighted<T>(items: { item: T; weight: number }[]): T | null {
 function pickScenarioForType(type: MomentType, sctx: SelectionContext): ArenaScenario | null {
   const candidates = ARENA_SCENARIOS.filter(s => s.type === type && gateAllowed(s, sctx))
   if (candidates.length === 0) return null
-  return pickWeighted(candidates.map(s => ({ item: s, weight: scenarioWeight(s, sctx) })))
+  return pickWeighted(candidates.map(s => ({ item: s, weight: scenarioWeight(s, sctx) })), sctx.rng)
 }
 
 /**
@@ -142,7 +145,7 @@ export function buildScenarioSequence(sctx: SelectionContext): ArenaScenario[] {
         return { item: t, weight: w }
       })
       .filter(x => x.weight > 0)
-    const type = pickWeighted(weightedTypes)
+    const type = pickWeighted(weightedTypes, sctx.rng)
     if (!type) continue
     const scenario = pickScenarioForType(type, liveCtx)
     if (!scenario) continue
@@ -155,7 +158,7 @@ export function buildScenarioSequence(sctx: SelectionContext): ArenaScenario[] {
     const heroTypes = groups.heroPool
     const heroCandidates = ARENA_SCENARIOS.filter(s => heroTypes.includes(s.type) && gateAllowed(s, liveCtx))
     if (heroCandidates.length > 0) {
-      const hero = pickWeighted(heroCandidates.map(s => ({ item: s, weight: scenarioWeight(s, liveCtx) })))
+      const hero = pickWeighted(heroCandidates.map(s => ({ item: s, weight: scenarioWeight(s, liveCtx) })), sctx.rng)
       if (hero) sequence.push(hero)
     } else {
       // fallback: pick another attacking scenario
@@ -163,7 +166,7 @@ export function buildScenarioSequence(sctx: SelectionContext): ArenaScenario[] {
         const cands = ARENA_SCENARIOS.filter(s => s.type === t && gateAllowed(s, liveCtx))
         const w = cands.reduce((sum, s) => sum + scenarioWeight(s, liveCtx), 0)
         return { item: t, weight: w }
-      }).filter(x => x.weight > 0))
+      }).filter(x => x.weight > 0), sctx.rng)
       if (fallbackType) {
         const fallback = pickScenarioForType(fallbackType, liveCtx)
         if (fallback) sequence.push(fallback)

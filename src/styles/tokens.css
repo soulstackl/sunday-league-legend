@@ -27,7 +27,7 @@
   --off-white: #ffffff;
   --text-muted: rgba(255, 255, 255, 0.60);
   --warm-grey: rgba(255, 255, 255, 0.60);
-  --text-faint: rgba(255, 255, 255, 0.35);
+  --text-faint: rgba(255, 255, 255, 0.5);
 
   /* Brand accent — light purple for labels/borders/highlights */
   --accent: #c5a5ff;

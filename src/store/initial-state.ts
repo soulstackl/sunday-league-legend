@@ -1,12 +1,20 @@
 import type { SaveState } from '../types/game'
 
-export const SAVE_KEY = 'sll_save_v4'
-const LEGACY_SAVE_KEYS = ['sll_save_v3', 'sll_save_v2', 'sll_save_v1'] as const
+export const SAVE_KEY = 'sll_save_v5'
+const LEGACY_SAVE_KEYS = ['sll_save_v4', 'sll_save_v3', 'sll_save_v2', 'sll_save_v1'] as const
 
 export const LEGACY_KEYS = LEGACY_SAVE_KEYS
 
+// Cap on the persisted career-event history so a long career cannot grow the save
+// without bound. A separate monotonic counter (careerEventCount) is used for RNG
+// seeding so trimming this array does not affect determinism.
+export const MAX_CAREER_EVENTS = 200
+
+// Cap on stored daily-challenge results (a rolling local history / leaderboard).
+export const MAX_DAILY_HISTORY = 60
+
 export const initialSaveState: SaveState = {
-  version: 4,
+  version: 5,
   seed: 12345,
   player: {
     name: '',
@@ -42,6 +50,7 @@ export const initialSaveState: SaveState = {
     bev:        { relationshipScore: 55, events: [] },
   },
   careerEvents: [],
+  careerEventCount: 0,
   groupChatLog: [],
   chaosCardHistory: [],
   hallOfFame: [],
@@ -50,6 +59,9 @@ export const initialSaveState: SaveState = {
     soundEnabled: true,
     textSize: 'normal',
     inputSensitivity: 'normal',
+    difficulty: 'normal',
+    inputMode: 'drag',
+    tutorialSeen: false,
   },
   subplots: [],
   contextModifiers: {
@@ -62,5 +74,8 @@ export const initialSaveState: SaveState = {
     medium: null,
     long: null,
     completedThisSeason: [],
+  },
+  dailyChallenge: {
+    history: [],
   },
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { saveGame, loadGame, deepClone } from '../../store/persistence'
+import { saveGame, loadGame, deepClone, exportSave, importSave } from '../../store/persistence'
 import { initialSaveState, SAVE_KEY } from '../../store/initial-state'
 import type { SaveState } from '../../types/game'
 
@@ -111,7 +111,7 @@ describe('migrate: legacy save recovery', () => {
     expect(loaded).not.toBeNull()
     expect(loaded?.player.name).toBe('Gazza')
     expect(loaded?.player.traits).toEqual([])
-    expect(loaded?.version).toBe(4)
+    expect(loaded?.version).toBe(initialSaveState.version)
     expect(store[SAVE_KEY]).toBeDefined()
     expect(store['sll_save_v1']).toBeUndefined()
   })
@@ -125,7 +125,7 @@ describe('migrate: legacy save recovery', () => {
     const loaded = loadGame()
     expect(loaded?.player.name).toBe('Chappers')
     expect(loaded?.season.week).toBe(7)
-    expect(loaded?.version).toBe(4)
+    expect(loaded?.version).toBe(initialSaveState.version)
     expect(store['sll_save_v2']).toBeUndefined()
     expect(store[SAVE_KEY]).toBeDefined()
   })
@@ -136,7 +136,7 @@ describe('migrate: legacy save recovery', () => {
     v3Data.contextModifiers = { oppositionScouted: true, setPieceReady: false } as never
     store['sll_save_v3'] = JSON.stringify(v3Data)
     const loaded = loadGame()
-    expect(loaded?.version).toBe(4)
+    expect(loaded?.version).toBe(initialSaveState.version)
     expect(loaded?.contextModifiers.hangoverPending).toBe(false)
     expect(loaded?.contextModifiers.oppositionScouted).toBe(true)
     expect(store['sll_save_v3']).toBeUndefined()
@@ -177,5 +177,43 @@ describe('migrate: partial / corrupted saves', () => {
     expect(loaded?.player.name).toBe('Stevo')
     expect(loaded?.season.week).toBe(initialSaveState.season.week)
     expect(loaded?.hallOfFame).toEqual([])
+  })
+
+  it('defaults new v5 settings and daily-challenge state for an older save', () => {
+    const partial = { version: 3, seed: 7, player: { name: 'Smudger' }, settings: { soundEnabled: false } }
+    store[SAVE_KEY] = JSON.stringify(partial)
+    const loaded = loadGame()
+    expect(loaded?.settings.soundEnabled).toBe(false)
+    expect(loaded?.settings.difficulty).toBe('normal')
+    expect(loaded?.settings.inputMode).toBe('drag')
+    expect(loaded?.settings.tutorialSeen).toBe(false)
+    expect(loaded?.dailyChallenge).toEqual({ history: [] })
+  })
+
+  it('preserves a newer-version save instead of downgrading it', () => {
+    const future = { ...deepClone(initialSaveState), version: 99, futureField: 'keep-me' }
+    future.player.name = 'TimeTraveller'
+    store[SAVE_KEY] = JSON.stringify(future)
+    const loaded = loadGame() as (SaveState & { futureField?: string }) | null
+    expect(loaded?.version).toBe(99)
+    expect(loaded?.futureField).toBe('keep-me')
+  })
+})
+
+describe('exportSave / importSave', () => {
+  it('round-trips a career through export and import', () => {
+    const state = deepClone(initialSaveState)
+    state.player.name = 'Gaz-Two-Pints'
+    state.season.week = 9
+    state.dailyChallenge.history.push({ date: '2026-05-30', score: 17, goals: 3 })
+    const text = exportSave(state)
+    const imported = importSave(text)
+    expect(imported?.player.name).toBe('Gaz-Two-Pints')
+    expect(imported?.season.week).toBe(9)
+    expect(imported?.dailyChallenge.history[0]).toEqual({ date: '2026-05-30', score: 17, goals: 3 })
+  })
+
+  it('returns null for text that is not a valid save', () => {
+    expect(importSave('definitely not json')).toBeNull()
   })
 })

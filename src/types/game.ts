@@ -253,6 +253,19 @@ export interface GameSettings {
   soundEnabled: boolean
   textSize: 'small' | 'normal' | 'large'
   inputSensitivity: 'low' | 'normal' | 'high'
+  difficulty: 'easy' | 'normal' | 'hard'
+  inputMode: 'drag' | 'tap'
+  tutorialSeen: boolean
+}
+
+export interface DailyChallengeResult {
+  date: string // YYYY-MM-DD (challenge day)
+  score: number // points scored that day's best attempt
+  goals: number
+}
+
+export interface DailyChallengeState {
+  history: DailyChallengeResult[]
 }
 
 export interface HallOfFameEntry {
@@ -279,6 +292,9 @@ export interface SaveState {
   season: Season
   npcs: Record<string, NpcState>
   careerEvents: CareerEvent[]
+  // Monotonic count of all career events ever recorded (not reduced when careerEvents
+  // is trimmed). Used as an RNG seed component so seeding stays stable over a long career.
+  careerEventCount: number
   groupChatLog: ChatMessage[]
   chaosCardHistory: { id: string; week: number }[]
   hallOfFame: HallOfFameEntry[]
@@ -286,6 +302,8 @@ export interface SaveState {
   subplots: SubplotProgress[]
   contextModifiers: ContextModifiers
   objectives: ObjectiveState
+  // Meta progress that survives starting a new career (like hallOfFame).
+  dailyChallenge: DailyChallengeState
 }
 
 export interface MatchReport {

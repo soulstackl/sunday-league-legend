@@ -34,7 +34,7 @@ Sunday League Legend is a mobile-first football life RPG built as a single-page 
 - Game logic in `src/engine/` is React-free and deterministic where practical. UI must not duplicate engine logic.
 - `App.tsx` owns all state and screen routing. It calls `updateStore` to mutate state immutably and auto-save.
 - All Discord SDK calls go through the platform adapter (`src/platform/standalone.ts` is the only production adapter today). The game must remain fully playable in standalone mode.
-- Save schema is versioned. Bumps require a migration in `src/store/persistence.ts`. Current version is 3.
+- Save schema is versioned. Bumps require a migration in `src/store/persistence.ts`. Current version is 5.
 - All chaos cards, NPCs, opponents, midweek actions, and subplots live in `src/data/` as TypeScript modules.
 
 ## House rules
@@ -47,5 +47,5 @@ Sunday League Legend is a mobile-first football life RPG built as a single-page 
 
 ## Save data
 
-- Storage key: `sll_save_v3`. Older `sll_save_v2` and `sll_save_v1` keys are auto-migrated on load and then removed.
+- Storage key: `sll_save_v5`. Older `sll_save_v4`, `sll_save_v3`, `sll_save_v2`, and `sll_save_v1` keys are auto-migrated on load and then removed. A save written by a newer build than the running code is preserved as-is rather than downgraded.
 - A career is identified by `player.name` being non-empty. Title screen "Continue" gates on this.

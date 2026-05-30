@@ -6,6 +6,7 @@ interface TrainingDrillScreenProps {
   store: SaveState
   onComplete: (score: number) => void
   onSkip: () => void
+  onCancel: () => void
 }
 
 const CANVAS_W = 340
@@ -24,7 +25,7 @@ const TARGET_POSITIONS: { x: number; y: number }[] = [
 
 type Phase = 'ready' | 'dragging' | 'result' | 'done'
 
-export function TrainingDrillScreen({ store, onComplete, onSkip }: TrainingDrillScreenProps) {
+export function TrainingDrillScreen({ store, onComplete, onSkip, onCancel }: TrainingDrillScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [attempt, setAttempt] = useState(0)
   const [results, setResults] = useState<boolean[]>([])
@@ -280,15 +281,23 @@ export function TrainingDrillScreen({ store, onComplete, onSkip }: TrainingDrill
 
       <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
         <button
-          onClick={onSkip}
-          style={{ flex: 1, padding: '14px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+          onClick={onCancel}
+          style={{ flex: 1, minHeight: '44px', padding: '14px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
         >
-          Skip
+          Cancel
         </button>
+        {!isDone && (
+          <button
+            onClick={onSkip}
+            style={{ flex: 1, minHeight: '44px', padding: '14px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+          >
+            Skip drill
+          </button>
+        )}
         {isDone && (
           <button
             onClick={() => onComplete(score)}
-            style={{ flex: 2, padding: '14px', background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', fontFamily: 'var(--font-ui)' }}
+            style={{ flex: 2, minHeight: '44px', padding: '14px', background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.04em', fontFamily: 'var(--font-ui)' }}
           >
             APPLY REWARD
           </button>

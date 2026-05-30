@@ -51,6 +51,8 @@ export function checkObjectivesAfterMatch(state: SaveState): ObjectiveCheckResul
   const seasonGoals = allSeason.reduce((acc, r) => acc + (r.stats?.goals ?? 0), 0)
   const leagueResults = allSeason.filter(r => r.competition === 'league')
   const lastN = (n: number) => leagueResults.slice(-n)
+  // "Win 3 consecutive matches" counts any competition, so streaks span all results.
+  const lastNAll = (n: number) => allSeason.slice(-n)
 
   const checkMap: Record<string, () => boolean> = {
     'win-this-week':  () => last.ourGoals > last.theirGoals,
@@ -63,7 +65,7 @@ export function checkObjectivesAfterMatch(state: SaveState): ObjectiveCheckResul
       return passes >= 5 && (success / passes) >= 0.7
     },
     'tackle-win':     () => (last.stats?.tackleSuccess ?? 0) >= 2,
-    'win-streak-3':   () => lastN(3).length === 3 && lastN(3).every(r => r.ourGoals > r.theirGoals),
+    'win-streak-3':   () => lastNAll(3).length === 3 && lastNAll(3).every(r => r.ourGoals > r.theirGoals),
     'score-5-season': () => seasonGoals >= 5,
     'unbeaten-5':     () => leagueResults.length >= 5 && lastN(5).every(r => r.ourGoals >= r.theirGoals),
     'high-chemistry': () => state.player.states.teamChemistry >= 80,
@@ -95,8 +97,8 @@ export function checkLongObjectiveAtSeasonEnd(state: SaveState, position: number
     'finish-top-2':       () => position <= 2,
     'win-the-cup':        () => state.season.cupWon,
     'reach-cup-final':    () => state.season.cupWon || state.season.results.some(r => r.cupRound === 'final'),
-    'finish-top-half':    () => position <= Math.ceil(totalTeams / 2),
-    'survive-relegation': () => position > Math.ceil(totalTeams / 2) && position < totalTeams - 1,
+    'finish-top-half':    () => position <= Math.floor(totalTeams / 2),
+    'survive-relegation': () => position > Math.floor(totalTeams / 2) && position < totalTeams - 1,
   }
 
   const check = checkMap[longId]

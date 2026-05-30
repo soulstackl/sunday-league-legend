@@ -1,5 +1,5 @@
 import type { SaveState } from '../types/game'
-import { SAVE_KEY, LEGACY_KEYS, initialSaveState } from './initial-state'
+import { SAVE_KEY, LEGACY_KEYS, MAX_CAREER_EVENTS, MAX_DAILY_HISTORY, initialSaveState } from './initial-state'
 import { TRAIT_REGISTRY } from '../engine/traits'
 
 export function deepClone<T>(obj: T): T {
@@ -29,12 +29,24 @@ function uniqueStrings(values: unknown): string[] | null {
   return out
 }
 
+const CURRENT_VERSION = 5
+
 function migrate(raw: unknown): SaveState | null {
   if (!raw || typeof raw !== 'object') return null
   const data = raw as Partial<SaveState> & Record<string, unknown>
 
+  // Forward compatibility: a save written by a newer build must not be silently
+  // downgraded and stripped of unknown fields (the next auto-save would then
+  // overwrite it lossily). Preserve it untouched and let the app load it as-is.
+  if (typeof data.version === 'number' && data.version > CURRENT_VERSION) {
+    return data as SaveState
+  }
+
   const base = deepClone(initialSaveState)
-  base.version = 4
+  base.version = CURRENT_VERSION
+
+  // Preserve "last played" through migration.
+  if (typeof data.savedAt === 'number') base.savedAt = data.savedAt
 
   if (data.player) {
     const dedupedTraits = uniqueStrings(data.player.traits)
@@ -82,7 +94,13 @@ function migrate(raw: unknown): SaveState | null {
       base.npcs[k] = { relationshipScore: v.relationshipScore ?? 50, events: v.events ?? [] }
     })
   }
-  if (Array.isArray(data.careerEvents)) base.careerEvents = data.careerEvents as SaveState['careerEvents']
+  if (Array.isArray(data.careerEvents)) base.careerEvents = (data.careerEvents as SaveState['careerEvents']).slice(-MAX_CAREER_EVENTS)
+  // Monotonic counter used for RNG seeding. Preserve it across migrations; for
+  // older saves that predate the field, seed it from the recorded event count so
+  // determinism does not reset.
+  base.careerEventCount = typeof data.careerEventCount === 'number'
+    ? data.careerEventCount
+    : (Array.isArray(data.careerEvents) ? data.careerEvents.length : 0)
   if (Array.isArray(data.groupChatLog)) base.groupChatLog = data.groupChatLog as SaveState['groupChatLog']
   if (Array.isArray(data.chaosCardHistory)) base.chaosCardHistory = data.chaosCardHistory as SaveState['chaosCardHistory']
   if (Array.isArray(data.hallOfFame)) {
@@ -102,11 +120,15 @@ function migrate(raw: unknown): SaveState | null {
     }))
   }
   if (data.settings) {
+    const ds = data.settings as Partial<SaveState['settings']>
     base.settings = {
-      reducedMotion: !!(data.settings as Partial<SaveState['settings']>).reducedMotion,
-      soundEnabled: (data.settings as Partial<SaveState['settings']>).soundEnabled ?? true,
-      textSize: ((data.settings as Partial<SaveState['settings']>).textSize ?? 'normal') as SaveState['settings']['textSize'],
-      inputSensitivity: ((data.settings as Partial<SaveState['settings']>).inputSensitivity ?? 'normal') as SaveState['settings']['inputSensitivity'],
+      reducedMotion: !!ds.reducedMotion,
+      soundEnabled: ds.soundEnabled ?? true,
+      textSize: (ds.textSize ?? 'normal') as SaveState['settings']['textSize'],
+      inputSensitivity: (ds.inputSensitivity ?? 'normal') as SaveState['settings']['inputSensitivity'],
+      difficulty: (ds.difficulty ?? 'normal') as SaveState['settings']['difficulty'],
+      inputMode: (ds.inputMode ?? 'drag') as SaveState['settings']['inputMode'],
+      tutorialSeen: !!ds.tutorialSeen,
     }
   }
   if (Array.isArray((data as { subplots?: SaveState['subplots'] }).subplots)) {
@@ -129,7 +151,33 @@ function migrate(raw: unknown): SaveState | null {
     }
   }
 
+  const persistedDaily = (data as { dailyChallenge?: Partial<SaveState['dailyChallenge']> }).dailyChallenge
+  if (persistedDaily && Array.isArray(persistedDaily.history)) {
+    base.dailyChallenge = {
+      history: persistedDaily.history
+        .filter(h => h && typeof h.date === 'string')
+        .map(h => ({ date: h.date, score: Number(h.score) || 0, goals: Number(h.goals) || 0 }))
+        .slice(-MAX_DAILY_HISTORY),
+    }
+  }
+
   return base
+}
+
+// Export the current save as a portable, human-readable JSON string. Used for the
+// "back up / move your career" feature; no server involved.
+export function exportSave(state: SaveState): string {
+  return JSON.stringify({ ...state, savedAt: Date.now() }, null, 2)
+}
+
+// Parse and migrate a previously exported save string. Returns null if the text is
+// not a valid save (so the caller can show a friendly error rather than crash).
+export function importSave(text: string): SaveState | null {
+  try {
+    return migrate(JSON.parse(text))
+  } catch {
+    return null
+  }
 }
 
 export function loadGame(): SaveState | null {

@@ -1,4 +1,4 @@
-import { Trophy, Settings } from 'lucide-react'
+import { Trophy, Settings, CalendarDays } from 'lucide-react'
 import { Badge } from '../components/shared/Badge'
 
 interface TitleScreenProps {
@@ -6,10 +6,11 @@ interface TitleScreenProps {
   onContinue: () => void
   onHall: () => void
   onSettings: () => void
+  onDaily: () => void
   hasSave: boolean
 }
 
-export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: TitleScreenProps) {
+export function TitleScreen({ onNew, onContinue, onHall, onSettings, onDaily, hasSave }: TitleScreenProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px 24px', textAlign: 'center', gap: '0', position: 'relative' }}>
       <div style={{ animation: 'bounce 2.5s infinite', marginBottom: '24px' }}>
@@ -43,6 +44,15 @@ export function TitleScreen({ onNew, onContinue, onHall, onSettings, hasSave }: 
             CONTINUE
           </button>
         )}
+
+        <button
+          aria-label="Play the daily challenge"
+          onClick={onDaily}
+          style={{ width: '100%', padding: '14px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          <CalendarDays size={16} />
+          Daily Challenge
+        </button>
 
         <button
           aria-label="View Hall of Fame"

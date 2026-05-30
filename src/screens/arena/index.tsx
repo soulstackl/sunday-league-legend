@@ -15,9 +15,11 @@ import { AudioManager } from '../../audio/AudioManager'
 import type { ArenaScenario } from '../../data/arenaScenarios'
 import { scenariosForType } from '../../data/arenaScenarios'
 import { buildScenarioSequence } from '../../engine/arenaSelection'
+import { mulberry32 } from '../../engine/rng'
+import { difficultyAccuracyMod } from '../../engine/match'
 import {
   applyScenarioSetup, buildWallActors,
-  getPhysicsType, commentaryFor, tuningMul, tuningFlag,
+  getPhysicsType, commentaryFor, tuningMul, tuningVal, tuningFlag,
   type OutcomeKey,
 } from './scenarioAdapter'
 
@@ -28,6 +30,9 @@ interface ArenaScreenProps {
   fixture: Fixture
   activeCards: ChaosCard[]
   onCompleteMatch: (results: MomentResult[], stats: ArenaMatchStats) => void
+  // Called the first time the player takes an action, so the one-time tutorial flag
+  // can be persisted in the save. Optional (e.g. the daily challenge does not set it).
+  onTutorialSeen?: () => void
 }
 
 const statBoost = (stat: number, neutral = 10): number =>
@@ -128,11 +133,12 @@ function buildMomentSequence(kind: 'league' | 'cup', archetype: string, extraMom
   })
 }
 
-export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: ArenaScreenProps) {
+export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTutorialSeen }: ArenaScreenProps) {
   const opponent = fixture.opponent
   const playerStats = store.player.stats
   const ctx = store.contextModifiers
   const reducedMotion = store.settings.reducedMotion
+  const inputMode = store.settings.inputMode
 
   const keeperProfile = useMemo(() => {
     const d = opponent.difficulty || 5
@@ -158,9 +164,9 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
   const readyPhaseRef = useRef('intro')
   useEffect(() => { readyPhaseRef.current = readyPhase }, [readyPhase])
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    try { return !localStorage.getItem('sll-tutorial-seen-v1') } catch (_) { return false }
-  })
+  // One-time onboarding hint, sourced from the save so it survives export/import and
+  // never re-shows once the player has taken their first action.
+  const [showTutorial, setShowTutorial] = useState(() => !store.settings.tutorialSeen)
   const showTutorialRef = useRef(false)
   useEffect(() => { showTutorialRef.current = showTutorial }, [showTutorial])
 
@@ -209,6 +215,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       activeCards,
       momentum: 50,
       prevTypes: [],
+      // Seeded so the moment sequence is reproducible from the save seed.
+      rng: mulberry32(store.seed + (fixture.week ?? 0) * 101 + store.season.number * 7),
     })
     const legacy = buildMomentSequence(fixture.kind, store.player.archetype, getExtraMatchMoments(playerTraits))
     if (base.length < legacy.length) {
@@ -521,7 +529,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     AudioManager.init()
 
     if (showTutorial) {
-      try { localStorage.setItem('sll-tutorial-seen-v1', '1') } catch (_) {}
+      onTutorialSeen?.()
       setShowTutorial(false)
     }
 
@@ -547,7 +555,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     const scoutBonus = ctx.oppositionScouted ? 0.05 : 0
     const setPieceBonus = ctx.setPieceReady && (activeMomentType === 'penalty' || activeMomentType === 'freekick') ? 0.08 : 0
     const sensitivity = store.settings.inputSensitivity === 'high' ? 1.08 : store.settings.inputSensitivity === 'low' ? 0.94 : 1
-    const effectiveAccuracy = Math.max(0, Math.min(1.15, (accuracy + statMod + momentumBoost + vibesMod + paceMod + traitBonus - energyPenalty - chaosMods.accuracyPenalty + scoutBonus + setPieceBonus) * sensitivity))
+    // Spin shots get a small aiming aid; weak-foot finishes a small penalty.
+    const aimAidMod = (tuningFlag(activeScenario, 'spinShot') ? 0.06 : 0) - (tuningFlag(activeScenario, 'weakFoot') ? 0.08 : 0)
+    const diffMod = difficultyAccuracyMod(store.settings.difficulty)
+    const effectiveAccuracy = Math.max(0, Math.min(1.15, (accuracy + statMod + momentumBoost + vibesMod + paceMod + traitBonus - energyPenalty - chaosMods.accuracyPenalty + scoutBonus + setPieceBonus + aimAidMod + diffMod) * sensitivity))
     const effectivePower = Math.max(0.2, Math.min(1.15, (power + statMod * 0.4 - chaosMods.powerPenalty + setPieceBonus * 0.5) * sensitivity))
     if (activeMomentType === 'tackle') {
       setEnergy(e => Math.max(0, e - (10 - Math.round(statBoost(playerStats.graft) * 10))))
@@ -557,7 +568,9 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         return
       }
       const tr = tackleTimingRef.current
-      const timingOk = tr >= 0.55 && tr <= 0.92
+      const twLo = tuningVal(activeScenario, 'tackleWindowLo', 0.55)
+      const twHi = tuningVal(activeScenario, 'tackleWindowHi', 0.92)
+      const timingOk = tr >= twLo && tr <= twHi
       const aimAngle = Math.atan2(attacker.y - 320, attacker.x - 200)
       const angularAlignment = Math.cos(angle - aimAngle)
       const tackleTraitBonus = getTackleEngineBonus(playerTraits)
@@ -579,10 +592,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         resolveSimulationOutcome({ outcome: 'RECOVERY', details: 'Beaten for the first yard, but your pace dragged you back to nick it clean.' })
         return
       }
-      if (tr < 0.55) {
+      if (tr < twLo) {
         navigator.vibrate?.([8])
         resolveSimulationOutcome({ outcome: 'EARLY', details: "Dived in too early. He's gone past you." })
-      } else if (tr > 0.92) {
+      } else if (tr > twHi) {
         navigator.vibrate?.([8])
         resolveSimulationOutcome({ outcome: 'LATE', details: "A split-second late, he's away." })
       } else {
@@ -720,7 +733,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }, baseDelay + 250)
     }
-  }, [activeMomentType, activeScenario, activeCards, energy, momentum, playerStats, playerTraits, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, reducedMotion])
+  }, [activeMomentType, activeScenario, activeCards, energy, momentum, playerStats, playerTraits, keeperProfile, resolveSimulationOutcome, scheduleMomentTimeout, showTutorial, onTutorialSeen, ctx.oppositionScouted, ctx.setPieceReady, store.settings.inputSensitivity, store.settings.difficulty, reducedMotion])
 
   const updateSimulation = useCallback(() => {
     const b = ball.current
@@ -815,10 +828,11 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
       if (activeMomentType === 'freekick' && !wallJumpedRef.current && b.y < 155 && b.y > 145) {
         wallJumpedRef.current = true
+        const wallJumpVz = 8 * tuningVal(activeScenario, 'defenderJumpRise', 1)
         for (const n of fieldNPCs.current) {
           if (n.type === 'defender') {
             // eslint-disable-next-line react-hooks/immutability
-            n.jumping = true; n.jumpVz = 8
+            n.jumping = true; n.jumpVz = wallJumpVz
           }
         }
         if (b.z < 15) {
@@ -860,8 +874,9 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }
 
+      const postThresh = 4 * tuningVal(activeScenario, 'postOddsMul', 1)
       if (isShotType && b.y < 12 && b.y > -10 && b.z < 80) {
-        if (Math.abs(b.x - 130) < 4) {
+        if (Math.abs(b.x - 130) < postThresh) {
           b.vx = -Math.abs(b.vx) * 0.68
           b.vy = Math.abs(b.vy) * 0.4
           b.hitPost = true
@@ -871,7 +886,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
           for (let i = 0; i < 4; i++) {
             postParticles.current.push({ x: 130, y: 10, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 3 - 1, life: 1.0, colour: '#F59E0B' })
           }
-        } else if (Math.abs(b.x - 270) < 4) {
+        } else if (Math.abs(b.x - 270) < postThresh) {
           b.vx = Math.abs(b.vx) * 0.68
           b.vy = Math.abs(b.vy) * 0.4
           b.hitPost = true
@@ -892,7 +907,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         if (!reducedMotion) { screenShakeRef.current = 6; hitStopRef.current = 3 }
       }
 
-      if (isShotType && !b.hitPost && !b.hitBar && b.y < 45 && b.x > 132 && b.x < 268 && b.z < 48) {
+      const goalHalf = 68 * Math.min(1, tuningVal(activeScenario, 'goalWidthFactor', 1))
+      if (isShotType && !b.hitPost && !b.hitBar && b.y < 45 && b.x > 200 - goalHalf && b.x < 200 + goalHalf && b.z < 48) {
         b.inGoal = true
         const inTopThird = b.z > 25
         const inSideThird = b.x < 165 || b.x > 235
@@ -980,7 +996,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
         }
       }
     })
-  }, [activeMomentType, pitch, weather, resolveSimulationOutcome, reducedMotion, keeperProfile.readSkill])
+  }, [activeMomentType, pitch, weather, resolveSimulationOutcome, reducedMotion, keeperProfile.readSkill, activeScenario])
 
   const drawHumanoid = (
     c: CanvasRenderingContext2D,
@@ -1156,9 +1172,11 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       }
       if (n.type === 'attacker') {
         const tr = tackleTimingRef.current
+        const twLo = tuningVal(activeScenario, 'tackleWindowLo', 0.55)
+        const twHi = tuningVal(activeScenario, 'tackleWindowHi', 0.92)
         const ringRadius = 20 + tr * 60
-        const ringColor = tr < 0.42 ? '#9ca3af' : tr < 0.55 ? '#F59E0B' : tr < 0.92 ? '#16A34A' : '#DC2626'
-        c.strokeStyle = ringColor; c.globalAlpha = tr < 0.50 ? 0.5 : 0.9; c.lineWidth = 3
+        const ringColor = tr < twLo - 0.13 ? '#9ca3af' : tr < twLo ? '#F59E0B' : tr < twHi ? '#16A34A' : '#DC2626'
+        c.strokeStyle = ringColor; c.globalAlpha = tr < twLo - 0.05 ? 0.5 : 0.9; c.lineWidth = 3
         c.beginPath(); c.arc(n.x, n.y, ringRadius, 0, Math.PI * 2); c.stroke()
         c.globalAlpha = 1.0
         c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 2
@@ -1316,7 +1334,10 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
       c.fillStyle = 'rgba(0,0,0,0.6)'
       c.fillRect(b.x - 80, b.y - b.z + (isSlingshot ? 80 : -40), 160, 18)
       c.fillStyle = '#fff'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center'
-      c.fillText(isSlingshot ? 'Drag back to power up' : 'Drag toward target', b.x, b.y - b.z + (isSlingshot ? 92 : -27))
+      const hintText = inputMode === 'tap'
+        ? 'Tap your target'
+        : (isSlingshot ? 'Drag back to power up' : 'Drag toward target')
+      c.fillText(hintText, b.x, b.y - b.z + (isSlingshot ? 92 : -27))
     }
 
     if (weather === 'fog') {
@@ -1345,7 +1366,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
 
     // eslint-disable-next-line react-hooks/immutability
     requestRef.current = requestAnimationFrame(drawFrame)
-  }, [activeMomentType, activeScenario, weather, updateSimulation, playerStats, reducedMotion])
+  }, [activeMomentType, activeScenario, weather, updateSimulation, playerStats, reducedMotion, inputMode])
 
   const getCanvasPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1405,9 +1426,30 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch }: Ar
     dragStart.current = null; dragCurrent.current = null; dragPath.current = []
   }
 
+  // Tap-to-aim (accessibility input mode): a single tap aims the ball straight at the
+  // tapped point with strong power and high base accuracy, so the skill is in shot
+  // placement rather than the drag gesture. Timing-based moments (tackles) resolve at
+  // the instant of the tap, exactly as a drag-release would.
+  const handleTap = (clientX: number, clientY: number) => {
+    if (currentOutcomeRef.current || simulationFinished.current) return
+    if (readyPhaseRef.current !== 'live') return
+    const pt = getCanvasPoint(clientX, clientY)
+    const b = ball.current
+    const dx = pt.x - b.x
+    const dy = pt.y - (b.y - b.z)
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist < 8) return // ignore taps essentially on the ball itself
+    const angle = Math.atan2(dy, dx) // fire straight toward the tapped point
+    const power = Math.max(0.5, Math.min(1, dist / 170))
+    shotVariantRef.current = 'standard'
+    navigator.vibrate?.([10])
+    handleInput(0.9, power, angle, 0, 'standard')
+  }
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return
     e.preventDefault()
+    if (inputMode === 'tap') { handleTap(e.clientX, e.clientY); return }
     canvasRef.current?.setPointerCapture(e.pointerId)
     beginDrag(e.clientX, e.clientY)
   }

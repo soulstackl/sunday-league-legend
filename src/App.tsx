@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import type {
   SaveState,
   MidweekAction,
@@ -9,6 +9,7 @@ import type {
   MatchStats,
   StatKey,
   HallOfFameEntry,
+  CareerEvent,
 } from './types/game'
 import { ARCHETYPES } from './data/archetypes'
 import { JOBS } from './data/jobs'
@@ -20,7 +21,7 @@ import { getFixture, nextWeekNumber, TOTAL_WEEKS } from './engine/schedule'
 import { advanceAiTable, buildStandings, ourLeaguePosition, resolvePromotionRelegation, initialTable } from './engine/league'
 import { subplotsToTriggerThisWeek, findSubplot } from './data/subplots'
 import { deepClone, saveGame, loadGame } from './store/persistence'
-import { initialSaveState, SAVE_KEY, LEGACY_KEYS } from './store/initial-state'
+import { initialSaveState, SAVE_KEY, LEGACY_KEYS, MAX_CAREER_EVENTS, MAX_DAILY_HISTORY } from './store/initial-state'
 import { platformAdapter } from './platform/standalone'
 import { AudioManager } from './audio/AudioManager'
 import { resolveCareerEnding } from './engine/endings'
@@ -52,7 +53,9 @@ import { MidweekScreen } from './screens/MidweekScreen'
 import { ChatScreen } from './screens/ChatScreen'
 import { ChaosScreen } from './screens/ChaosScreen'
 import { BriefingScreen } from './screens/BriefingScreen'
-import { ArenaScreen } from './screens/arena/index'
+// Lazy-loaded: the canvas match engine is the heaviest screen and is only needed at kickoff,
+// so it is split into its own chunk to speed up first load.
+const ArenaScreen = lazy(() => import('./screens/arena/index').then(m => ({ default: m.ArenaScreen })))
 import { PostMatchScreen } from './screens/PostMatchScreen'
 import { TableScreen } from './screens/TableScreen'
 import { CompleteScreen } from './screens/CompleteScreen'
@@ -62,12 +65,15 @@ import { SquadScreen } from './screens/SquadScreen'
 import { StatGrowthScreen } from './screens/StatGrowthScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { TrainingDrillScreen } from './screens/TrainingDrillScreen'
+import { CareerStatsScreen } from './screens/CareerStatsScreen'
+// Lazy: the daily challenge pulls in the heavy arena chunk only when opened.
+const DailyChallengeScreen = lazy(() => import('./screens/DailyChallengeScreen').then(m => ({ default: m.DailyChallengeScreen })))
 
 type Screen =
   | 'title' | 'name' | 'archetype' | 'job' | 'intro'
   | 'hub' | 'midweek' | 'chat' | 'chaos' | 'briefing' | 'arena' | 'training'
   | 'postmatch' | 'table' | 'complete' | 'hall' | 'settings'
-  | 'squad' | 'growth' | 'player'
+  | 'squad' | 'growth' | 'player' | 'career' | 'daily'
 
 interface MatchReportLocal {
   ourGoals: number
@@ -107,25 +113,48 @@ function applyTextSize(size: 'small' | 'normal' | 'large') {
   root.style.fontSize = map[size]
 }
 
+// Whether the operating system requests reduced motion, used to seed the default
+// for a brand-new player so the canvas effects respect their OS preference.
+function prefersReducedMotion(): boolean {
+  try {
+    return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
+
+// Record a career event: append to history, bump the monotonic counter (used for
+// RNG seeding), and trim the history so the save cannot grow without bound.
+function recordCareerEvent(s: SaveState, event: CareerEvent): void {
+  s.careerEvents.push(event)
+  s.careerEventCount = (s.careerEventCount ?? s.careerEvents.length) + 1
+  if (s.careerEvents.length > MAX_CAREER_EVENTS) {
+    s.careerEvents = s.careerEvents.slice(-MAX_CAREER_EVENTS)
+  }
+}
+
 export function App() {
   const [platform, setPlatform] = useState({ isDiscord: false })
 
+  // Load and migrate the save exactly once; both initial states derive from it.
+  const [loaded] = useState<SaveState | null>(() => loadGame())
+  const hasLoadedCareer = !!(loaded && loaded.player && loaded.player.name)
+
   const [store, setStoreRaw] = useState<SaveState>(() => {
-    const loaded = loadGame()
-    if (loaded && loaded.player && loaded.player.name) {
+    if (hasLoadedCareer && loaded) {
       // Assign objectives for saves that predate the objectives system.
       if (!loaded.objectives.short && !loaded.objectives.medium && !loaded.objectives.long) {
         assignInitialObjectives(loaded)
       }
       return loaded
     }
-    return deepClone(initialSaveState)
+    // Brand-new player: seed reduced-motion from their OS preference.
+    const fresh = deepClone(initialSaveState)
+    fresh.settings.reducedMotion = prefersReducedMotion()
+    return fresh
   })
 
-  const [currentScreen, setCurrentScreen] = useState<Screen>(() => {
-    const loaded = loadGame()
-    return (loaded && loaded.player && loaded.player.name) ? 'hub' : 'title'
-  })
+  const [currentScreen, setCurrentScreen] = useState<Screen>(hasLoadedCareer ? 'hub' : 'title')
 
   const [activeCards, setActiveCards] = useState<ChaosCard[]>([])
   const [matchReport, setMatchReport] = useState<MatchReportLocal | null>(null)
@@ -153,25 +182,33 @@ export function App() {
 
   const hasSave = store.player.name.length > 0
 
+  // Authoritative current state, kept in sync with `store`. updateStore reads from
+  // this ref so the state updater stays pure (no side-effects inside setStoreRaw),
+  // which is safe under React StrictMode double-invocation and concurrent rendering.
+  const storeRef = useRef(store)
+  useEffect(() => { storeRef.current = store }, [store])
+
   const updateStore = (updater: (s: SaveState) => void, opts: { silent?: boolean } = {}) => {
-    setStoreRaw(prev => {
-      const next = deepClone(prev)
-      updater(next)
-      const saved = saveGame(next)
-      if (!saved) {
-        setTimeout(() => {
-          setToast('Save failed. Check device storage.')
-          setTimeout(() => setToast(null), 4000)
-        }, 0)
-      } else if (!opts.silent) {
-        setToast('Saved')
-        setTimeout(() => setToast(null), 1000)
-      }
-      return next
-    })
+    const next = deepClone(storeRef.current)
+    updater(next)
+    storeRef.current = next
+    setStoreRaw(next)
+    const saved = saveGame(next)
+    if (!saved) {
+      setToast('Save failed. Check device storage.')
+      setTimeout(() => setToast(null), 4000)
+    } else if (!opts.silent) {
+      setToast('Saved')
+      setTimeout(() => setToast(null), 1000)
+    }
   }
 
   const fixture = getFixture(store.season.week, store.season.tier, store.season.cupExited)
+
+  // A fixture-dependent screen with no fixture would render a blank dead-end.
+  // Derive the screen to render so any such inconsistent state falls back to the hub.
+  const fixtureScreens: Screen[] = ['chaos', 'briefing', 'arena']
+  const activeScreen: Screen = (fixtureScreens.includes(currentScreen) && !fixture) ? 'hub' : currentScreen
 
   const triggerMidweekAction = (action: MidweekAction, statChoice?: StatKey, npcTarget?: string, drillScore?: number) => {
     // Training drill intercept: navigate to the drill screen — all effects deferred until drill completes.
@@ -204,7 +241,7 @@ export function App() {
         s.player.states.injuryRisk = Math.max(0, s.player.states.injuryRisk - 10)
       }
       // Injury trigger: probabilistic check on high accumulated risk.
-      const injRng = mulberry32(s.seed + s.season.week * 31 + s.careerEvents.length)
+      const injRng = mulberry32(s.seed + s.season.week * 31 + s.careerEventCount)
       const injChance = s.player.states.injuryRisk / 200
       if (s.player.states.injuryRisk > 40 && injRng() < injChance && s.player.states.injuryWeeksRemaining === 0) {
         s.player.states.injuryWeeksRemaining = 2
@@ -214,7 +251,7 @@ export function App() {
       // Stat boosts — 'train' action applies drill-score-based boost, all others use action effects.
       if (action.id === 'train') {
         if (drillScore !== undefined && drillScore > 0) {
-          const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEvents.length)
+          const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEventCount)
           const k = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
           s.player.stats[k] = Math.min(20, s.player.stats[k] + drillScore)
           if (getTrainingExtraStat(traits)) {
@@ -223,7 +260,7 @@ export function App() {
           }
         }
       } else if (action.effects.statBoost === 'random') {
-        const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEvents.length)
+        const rng = mulberry32(s.seed + s.season.week * 17 + s.careerEventCount)
         const k = STAT_KEYS[Math.floor(rng() * STAT_KEYS.length)]
         s.player.stats[k] = Math.min(20, s.player.stats[k] + 1)
         if (getTrainingExtraStat(traits)) {
@@ -241,11 +278,12 @@ export function App() {
       if (action.effects.contextModifier === 'set-piece-ready') s.contextModifiers.setPieceReady = true
       if (action.effects.hangoverRisk && !getPubHangoverImmune(traits)) s.contextModifiers.hangoverPending = true
 
-      s.careerEvents.push({ type: 'midweek_action', action: action.id, week: s.season.week })
+      recordCareerEvent(s, { type: 'midweek_action', action: action.id, week: s.season.week })
 
       // Training drill: only send Pete's feedback when the drill was actually completed.
-      // On skip (drillScore === 0) send a neutral system note instead.
-      const skipDrill = action.id === 'train' && drillScore === 0
+      // An explicit skip is signalled by a negative drillScore; a played drill that
+      // scored 0 is a genuine (if unsuccessful) attempt and still gets the banter.
+      const skipDrill = action.id === 'train' && drillScore !== undefined && drillScore < 0
       if (!skipDrill) {
         const choiceMsg = action.groupChatTrigger ? CHOICE_MESSAGES[action.groupChatTrigger] : null
         if (choiceMsg) s.groupChatLog.push({ ...choiceMsg })
@@ -319,7 +357,7 @@ export function App() {
     if (!fixture) return
     const opponent = fixture.opponent
     const rng = mulberry32(store.seed + week * 3)
-    const outcome = simulateMatch(results, store.player.states, activeCards, opponent, rng)
+    const outcome = simulateMatch(results, store.player.states, activeCards, opponent, rng, store.settings.difficulty)
     const successfulMoments = results.filter(r => SUCCESS_OUTCOMES.has(r.outcome)).length
     const rating = Math.min(10, Math.max(3, Math.round(successfulMoments * 2.5 + rng() * 3)))
     const won = outcome.ourGoals > outcome.theirGoals
@@ -362,7 +400,7 @@ export function App() {
       s.contextModifiers.oppositionScouted = false
       s.contextModifiers.setPieceReady = false
 
-      s.careerEvents.push({ type: 'match_complete', week, result: won ? 'win' : drew ? 'draw' : 'loss' })
+      recordCareerEvent(s, { type: 'match_complete', week, result: won ? 'win' : drew ? 'draw' : 'loss' })
 
       // Nemesis tracking: if this opponent has beaten us twice they become the nemesis.
       const wasNemesisBefore = s.season.nemesisOpponentId === opponent.id
@@ -469,7 +507,7 @@ export function App() {
         if (stage?.message.choices?.some(c => c.text === choice.text)) {
           sub.resolved = true
           sub.outcome = choice.text
-          s.careerEvents.push({ type: 'subplot_resolved', subplotId: sub.id, outcome: choice.text, week: s.season.week })
+          recordCareerEvent(s, { type: 'subplot_resolved', subplotId: sub.id, outcome: choice.text, week: s.season.week })
         }
       }
     })
@@ -481,8 +519,12 @@ export function App() {
       updateStore(s => {
         const completedWeek = s.season.week
         const completedFixture = getFixture(completedWeek, s.season.tier, s.season.cupExited)
-        if (completedFixture?.kind === 'league' && completedFixture.leagueIndex !== undefined) {
-          s.season.aiTable = advanceAiTable(s.season.aiTable, s.season.tier, completedFixture.leagueIndex, s.seed)
+        if (completedFixture?.kind === 'league') {
+          // Advance the AI table for every league fixture, including post-cup-exit
+          // friendlies (leagueIndex undefined) so AI played counts stay aligned with
+          // ours. The +20 offset keeps the round/seed distinct from real league weeks.
+          const roundIndex = completedFixture.leagueIndex ?? (completedWeek + 20)
+          s.season.aiTable = advanceAiTable(s.season.aiTable, s.season.tier, roundIndex, s.seed)
         }
 
         s.season.week = nextWeekNumber(s.season.week)
@@ -527,10 +569,11 @@ export function App() {
     } else {
       updateStore(s => {
         const completedFixture = getFixture(s.season.week, s.season.tier, s.season.cupExited)
-        if (completedFixture?.kind === 'league' && completedFixture.leagueIndex !== undefined) {
-          s.season.aiTable = advanceAiTable(s.season.aiTable, s.season.tier, completedFixture.leagueIndex, s.seed)
+        if (completedFixture?.kind === 'league') {
+          const roundIndex = completedFixture.leagueIndex ?? (s.season.week + 20)
+          s.season.aiTable = advanceAiTable(s.season.aiTable, s.season.tier, roundIndex, s.seed)
         }
-        s.careerEvents.push({ type: 'season_complete', week: s.season.week })
+        recordCareerEvent(s, { type: 'season_complete', week: s.season.week })
       })
       setCurrentScreen('complete')
     }
@@ -565,7 +608,9 @@ export function App() {
     fresh.hallOfFame = hof
     fresh.seed = Math.floor(Math.random() * 1000000)
     fresh.settings = deepClone(store.settings)
+    fresh.dailyChallenge = { history: [...(store.dailyChallenge?.history ?? [])] }
     saveGame(fresh)
+    storeRef.current = fresh
     setStoreRaw(fresh)
     setCurrentScreen('title')
   }
@@ -576,8 +621,36 @@ export function App() {
     const fresh = deepClone(initialSaveState)
     fresh.seed = Math.floor(Math.random() * 1000000)
     fresh.settings = deepClone(store.settings)
+    // "Delete career data" keeps meta progress (Hall of Fame, daily challenge) per the UI promise.
+    fresh.hallOfFame = store.hallOfFame ? [...store.hallOfFame] : []
+    fresh.dailyChallenge = { history: [...(store.dailyChallenge?.history ?? [])] }
+    storeRef.current = fresh
     setStoreRaw(fresh)
     setCurrentScreen('title')
+  }
+
+  const recordDailyResult = (date: string, score: number, goals: number) => {
+    updateStore(s => {
+      const idx = s.dailyChallenge.history.findIndex(h => h.date === date)
+      if (idx >= 0) {
+        // Keep the best attempt for the day.
+        if (score > s.dailyChallenge.history[idx].score) s.dailyChallenge.history[idx] = { date, score, goals }
+      } else {
+        s.dailyChallenge.history.push({ date, score, goals })
+      }
+      if (s.dailyChallenge.history.length > MAX_DAILY_HISTORY) {
+        s.dailyChallenge.history = s.dailyChallenge.history.slice(-MAX_DAILY_HISTORY)
+      }
+    }, { silent: true })
+  }
+
+  const handleImportSave = (imported: SaveState) => {
+    storeRef.current = imported
+    setStoreRaw(imported)
+    saveGame(imported)
+    setCurrentScreen(imported.player.name ? 'hub' : 'title')
+    setToast('Career imported')
+    setTimeout(() => setToast(null), 1500)
   }
 
   const startNewCareer = () => {
@@ -585,7 +658,9 @@ export function App() {
     fresh.seed = Math.floor(Math.random() * 1000000)
     fresh.hallOfFame = store.hallOfFame ? [...store.hallOfFame] : []
     fresh.settings = deepClone(store.settings)
+    fresh.dailyChallenge = { history: [...(store.dailyChallenge?.history ?? [])] }
     fresh.season.aiTable = initialTable(fresh.season.tier)
+    storeRef.current = fresh
     setStoreRaw(fresh)
     setCurrentScreen('name')
   }
@@ -612,7 +687,7 @@ export function App() {
         if (longResult.definition.reward.confidence) s.player.states.confidence = clamp(s.player.states.confidence + longResult.definition.reward.confidence, 0, 100)
       }
 
-      s.careerEvents.push({ type: 'season_summary', week: s.season.week, result: promo.movement, pts: standings.find(r => r.isUs)?.points })
+      recordCareerEvent(s, { type: 'season_summary', week: s.season.week, result: promo.movement, pts: standings.find(r => r.isUs)?.points })
       s.season.number += 1
       s.season.tier = promo.newTier
       s.season.week = 1
@@ -646,32 +721,40 @@ export function App() {
   const confirmStatGrowth = (chosen: StatKey) => {
     updateStore(s => {
       s.player.stats[chosen] = Math.min(20, s.player.stats[chosen] + 1)
-      s.careerEvents.push({ type: 'stat_growth', action: chosen, week: 1 })
+      recordCareerEvent(s, { type: 'stat_growth', action: chosen, week: 1 })
     })
     setPendingStatGrowth(false)
     setCurrentScreen('hub')
   }
 
   return (
-    <div style={{ maxWidth: '430px', margin: '0 auto', minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'transparent', position: 'relative' }}>
-      {currentScreen === 'title' && (
+    <div style={{
+      maxWidth: '430px', margin: '0 auto', minHeight: '100dvh',
+      display: 'flex', flexDirection: 'column', background: 'transparent', position: 'relative',
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      paddingLeft: 'env(safe-area-inset-left, 0px)',
+      paddingRight: 'env(safe-area-inset-right, 0px)',
+    }}>
+      {activeScreen ==='title' && (
         <TitleScreen
           hasSave={hasSave}
           onNew={startNewCareer}
           onContinue={() => setCurrentScreen('hub')}
           onHall={() => setCurrentScreen('hall')}
           onSettings={() => setCurrentScreen('settings')}
+          onDaily={() => setCurrentScreen('daily')}
         />
       )}
 
-      {currentScreen === 'name' && (
+      {activeScreen ==='name' && (
         <NameScreen onNext={(name) => {
           updateStore(s => { s.player.name = name })
           setCurrentScreen('archetype')
         }} />
       )}
 
-      {currentScreen === 'archetype' && (
+      {activeScreen ==='archetype' && (
         <ArchetypeScreen onNext={(archetypeId) => {
           const arch = ARCHETYPES.find(a => a.id === archetypeId)
           if (arch) {
@@ -686,7 +769,7 @@ export function App() {
         }} />
       )}
 
-      {currentScreen === 'job' && (
+      {activeScreen ==='job' && (
         <JobScreen onNext={(jobId) => {
           const jobData = JOBS.find(j => j.id === jobId)
           updateStore(s => {
@@ -714,9 +797,9 @@ export function App() {
         }} />
       )}
 
-      {currentScreen === 'intro' && <IntroScreen onNext={() => setCurrentScreen('hub')} />}
+      {activeScreen ==='intro' && <IntroScreen onNext={() => setCurrentScreen('hub')} />}
 
-      {currentScreen === 'hub' && (
+      {activeScreen ==='hub' && (
         <HubScreen
           store={store}
           fixture={fixture}
@@ -728,11 +811,12 @@ export function App() {
           onSquad={() => setCurrentScreen('squad')}
           onTable={() => { setTableCanAdvance(false); setCurrentScreen('table') }}
           onPlayer={() => setCurrentScreen('player')}
+          onCareer={() => setCurrentScreen('career')}
           isDiscord={platform.isDiscord}
         />
       )}
 
-      {currentScreen === 'midweek' && (
+      {activeScreen ==='midweek' && (
         <MidweekScreen
           store={store}
           onConfirm={triggerMidweekAction}
@@ -741,7 +825,7 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'chat' && (
+      {activeScreen ==='chat' && (
         <ChatScreen
           store={store}
           onBack={() => setCurrentScreen('hub')}
@@ -750,11 +834,11 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'chaos' && fixture && (
+      {activeScreen ==='chaos' && fixture && (
         <ChaosScreen store={store} fixture={fixture} onKickOff={kickOffMatch} />
       )}
 
-      {currentScreen === 'briefing' && fixture && (
+      {activeScreen ==='briefing' && fixture && (
         <BriefingScreen
           store={store}
           fixture={fixture}
@@ -763,24 +847,28 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'arena' && fixture && (
-        <ArenaScreen
-          store={store}
-          fixture={fixture}
-          activeCards={activeCards}
-          onCompleteMatch={completeMatch}
-        />
+      {activeScreen ==='arena' && fixture && (
+        <Suspense fallback={<ArenaLoading />}>
+          <ArenaScreen
+            store={store}
+            fixture={fixture}
+            activeCards={activeCards}
+            onCompleteMatch={completeMatch}
+            onTutorialSeen={() => { if (!store.settings.tutorialSeen) updateStore(s => { s.settings.tutorialSeen = true }, { silent: true }) }}
+          />
+        </Suspense>
       )}
 
-      {currentScreen === 'training' && pendingTrainingAction && (
+      {activeScreen ==='training' && pendingTrainingAction && (
         <TrainingDrillScreen
           store={store}
           onComplete={completeDrill}
-          onSkip={() => { completeDrill(0) }}
+          onSkip={() => { completeDrill(-1) }}
+          onCancel={() => { setPendingTrainingAction(null); setCurrentScreen('midweek') }}
         />
       )}
 
-      {currentScreen === 'postmatch' && matchReport && (
+      {activeScreen ==='postmatch' && matchReport && (
         <PostMatchScreen
           store={store}
           matchReport={matchReport}
@@ -788,7 +876,7 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'table' && (
+      {activeScreen ==='table' && (
         <TableScreen
           store={store}
           onContinue={() => { setTableCanAdvance(false); handleNextWeek() }}
@@ -797,7 +885,7 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'complete' && (
+      {activeScreen ==='complete' && (
         <CompleteScreen
           store={store}
           onHallOfFame={recordHallOfFame}
@@ -806,7 +894,7 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'growth' && pendingStatGrowth && (
+      {activeScreen ==='growth' && pendingStatGrowth && (
         <StatGrowthScreen
           store={store}
           options={growthChoices}
@@ -814,41 +902,71 @@ export function App() {
         />
       )}
 
-      {currentScreen === 'squad' && (
+      {activeScreen ==='squad' && (
         <SquadScreen
           store={store}
           onBack={() => setCurrentScreen('hub')}
         />
       )}
 
-      {currentScreen === 'player' && (
+      {activeScreen ==='player' && (
         <PlayerScreen
           store={store}
           onBack={() => setCurrentScreen('hub')}
         />
       )}
 
-      {currentScreen === 'hall' && (
+      {activeScreen ==='hall' && (
         <HallOfFameScreen
           hallOfFame={store.hallOfFame}
           onBack={() => setCurrentScreen('title')}
         />
       )}
 
-      {currentScreen === 'settings' && (
+      {activeScreen ==='settings' && (
         <SettingsScreen
           store={store}
           onBack={() => setCurrentScreen(hasSave ? 'hub' : 'title')}
           onSaveSettings={(settings) => updateStore(s => { s.settings = settings })}
+          onImportSave={handleImportSave}
           onDeleteSave={deleteSave}
         />
       )}
 
+      {activeScreen ==='career' && (
+        <CareerStatsScreen
+          store={store}
+          onBack={() => setCurrentScreen(hasSave ? 'hub' : 'title')}
+        />
+      )}
+
+      {activeScreen ==='daily' && (
+        <Suspense fallback={<ArenaLoading />}>
+          <DailyChallengeScreen
+            store={store}
+            onRecordResult={recordDailyResult}
+            onBack={() => setCurrentScreen(hasSave ? 'hub' : 'title')}
+          />
+        </Suspense>
+      )}
+
       {toast && (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: toast.startsWith('Save failed') ? 'var(--danger)' : 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', animation: 'fadeIn 0.2s ease', zIndex: 999 }}>
+        <div
+          role="status"
+          aria-live={toast.startsWith('Save failed') ? 'assertive' : 'polite'}
+          style={{ position: 'fixed', bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', right: 'calc(20px + env(safe-area-inset-right, 0px))', background: toast.startsWith('Save failed') ? 'var(--danger)' : 'var(--success)', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', animation: 'fadeIn 0.2s ease', zIndex: 999 }}
+        >
           {toast}
         </div>
       )}
+    </div>
+  )
+}
+
+function ArenaLoading() {
+  return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', color: 'var(--text-muted)', fontFamily: 'var(--font-display)', fontSize: '16px', letterSpacing: '0.04em' }}>
+      Walking out&hellip;
     </div>
   )
 }
