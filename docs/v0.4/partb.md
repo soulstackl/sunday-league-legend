@@ -1,6 +1,14 @@
 # Part B: Production Readiness
 
-> **v0.4 status.** App-facing items are **implemented**: B6 (safe-area + `viewport-fit`), B7 (focus-visible), B8 (save export/import), B9 (pinch-zoom restored), B10 (arena code-split into its own chunk), B12 (OS reduced-motion seeding), B13 (aria-live toast, 44px small button, contrast), B14 (privacy/storage notice). Infrastructure/ops items are **deferred pending a hosting decision (GCP/Firebase under consideration)** and were intentionally NOT touched: B1 (Amplify config), B2 (service worker), B3 (error tracking + sourcemaps), B4 (CI), B5 (UI test tooling), B11 (icons/og-image/version stamp), B15 (package version + Discord dep — the Discord SDK stays, as a Discord Activity is on the roadmap).
+> **Status (post v0.4 + hosting migration).**
+>
+> App-facing items **implemented**: B6 (safe-area + `viewport-fit`), B7 (focus-visible), B8 (save export/import), B9 (pinch-zoom restored), B10 (arena code-split into its own chunk), B12 (OS reduced-motion seeding), B13 (aria-live toast, 44px small button, contrast), B14 (privacy/storage notice).
+>
+> **Hosting decided: Firebase Hosting** (new site `sunday-league-legend` in the existing `soapy-saxons-fc-frontend` project; manual `npm run deploy:hosting`). This resolved the headline infra findings below:
+> - **B1 — RESOLVED.** Headers and the SPA rewrite now live in committed `firebase.json` and are actually applied (verified live). The orphaned `_headers` / `vercel.json` were removed. CSP tightened to `script-src 'self'`. The original B1 text (recommending an `amplify.yml`) is superseded.
+> - **B2 — RESOLVED.** The service worker is now network-first for navigations (fresh shell on deploy), cache-first for hashed assets; `firebase.json` sets `no-cache` on the shell and `immutable` on `/assets/**`.
+>
+> Still **open / deferred**: B3 (error tracking + sourcemaps), B4 (CI / auto-deploy), B5 (UI test tooling), B11 (icons/og-image/version stamp), B15 (package version stamp — the Discord SDK stays, as a Discord Activity is on the roadmap). Note: AWS Amplify appears to have been the documented plan only; no Amplify config ever existed in the repo.
 
 
 Gaps between the current build and a consumer-grade production release. The app is technically deployable (clean build, clean `npm audit`, a real ErrorBoundary, a manifest and service worker), but several items below would bite real users on a public launch. Each item cites a file or marks it absent. Severity is judged for a consumer launch, not for internal testing.

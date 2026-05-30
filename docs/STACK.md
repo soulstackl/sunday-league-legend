@@ -135,7 +135,9 @@ Configuration lives in `firebase.json` (committed to the repo), so the SPA rewri
 
 ### Deploy
 
-`firebase init hosting:github` wires a GitHub Action that builds and deploys on every push to `main`, plus per-PR preview channels. A manual deploy is `npm run deploy:hosting`.
+Deploys are manual: `npm run deploy:hosting` (builds, then `firebase deploy --only hosting`). The app is a new site, `sunday-league-legend`, inside the existing `soapy-saxons-fc-frontend` project; the `"site"` field in `firebase.json` scopes the deploy so the other site in that project is never touched. Live at `https://sunday-league-legend.web.app`.
+
+Auto-deploy on push (a GitHub Action via `firebase init hosting:github`, which also gives per-PR preview channels) is a possible future step but is intentionally not set up yet.
 
 ### The Discord CSP point (important correction)
 
@@ -237,7 +239,7 @@ UI components are not unit tested at this stage. Manual device testing covers th
 | --- | --- |
 | Next.js | SSR framework, wrong fit for a client-side game in an iframe |
 | Vue / SvelteKit | Would require rewriting all existing components |
-| AWS Amplify | Previously used; migrated to Firebase to keep hosting, auth, realtime and cloud saves in one ecosystem |
+| AWS Amplify | Was the documented hosting target (never confirmed provisioned in production); superseded by Firebase Hosting to keep hosting, auth, realtime and cloud saves in one ecosystem |
 | AWS API Gateway + Lambda + DynamoDB | Firestore realtime listeners replace the WebSocket/broadcast plumbing with far less to build |
 | Cloudflare stack / Partykit | Good alternatives; Firebase chosen for single-project consistency |
 | Firebase Analytics / popup auth inside Discord | Inject scripts / use popups; conflict with the Discord iframe CSP. Use token auth and skip Analytics there |

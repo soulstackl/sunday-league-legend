@@ -28,6 +28,12 @@ Sunday League Legend is a mobile-first football life RPG built as a single-page 
 - `npm run lint` , ESLint with `--max-warnings 0`
 - `npm test` , Vitest
 - `npm run deploy:check` , runs typecheck, lint, build, and audit in order
+- `npm run deploy:hosting` , builds then deploys to Firebase Hosting
+
+## Deployment
+
+- Hosted on Firebase Hosting at `https://sunday-league-legend.web.app`. The site is `sunday-league-legend`, a dedicated site inside the existing `soapy-saxons-fc-frontend` Firebase project; the `"site"` field in `firebase.json` scopes deploys so no other site in that project is affected.
+- Deploys are manual via `npm run deploy:hosting` (no CI auto-deploy yet). Config (SPA rewrite, security headers, cache-control) lives in `firebase.json`.
 
 ## Architecture rules
 
