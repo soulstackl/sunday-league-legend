@@ -25,6 +25,12 @@ import {
 
 export type ArenaMatchStats = MatchStats
 
+// The simulation is authored in a fixed 400x400 logical world. The canvas CSS box
+// is whatever the layout gives us (about 343px on a 360px phone), so every frame is
+// drawn through a scale that maps the world onto the actual canvas. Input mapping in
+// getCanvasPoint divides by the same WORLD_SIZE, keeping taps and visuals aligned.
+const WORLD_SIZE = 400
+
 interface ArenaScreenProps {
   store: SaveState
   fixture: Fixture
@@ -178,7 +184,9 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const requestRef = useRef<number | null>(null)
-  const dprRef = useRef(1)
+  // Combined transform scale = devicePixelRatio * (cssWidth / WORLD_SIZE). Maps the
+  // 400-unit world into the canvas backing store so the full pitch fits and stays centred.
+  const worldScaleRef = useRef(1)
 
   const weather = activeCards.find(c => c.type === 'Weather')?.id || 'clear'
   const pitch = activeCards.find(c => c.type === 'Pitch')?.id || 'clear'
@@ -259,6 +267,9 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
   })
 
   const fieldNPCs = useRef<any[]>([])
+  // Where the player avatar (and its shadow) is drawn. Set per moment in resetSimulation
+  // so the player sits with the ball rather than at a fixed point behind it.
+  const avatarPos = useRef<{ x: number; y: number; show: boolean }>({ x: 200, y: 320, show: true })
   const particles = useRef<any[]>([])
   const pendingTimeouts = useRef<number[]>([])
 
@@ -289,9 +300,11 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
       canvas.height = cssW * dpr
       canvas.style.width = `${cssW}px`
       canvas.style.height = `${cssW}px`
+      // Map the 400-unit world onto the cssW*dpr backing store in one combined scale.
+      const scale = (cssW * dpr) / WORLD_SIZE
       const c = canvas.getContext('2d')
-      if (c) c.setTransform(dpr, 0, 0, dpr, 0, 0)
-      dprRef.current = dpr
+      if (c) c.setTransform(scale, 0, 0, scale, 0, 0)
+      worldScaleRef.current = scale
     }
     applyDpr()
     const ro = new ResizeObserver(applyDpr)
@@ -382,6 +395,26 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
       tackleStartMsRef.current = 0
     } else if (activeMomentType === 'penalty') {
       keeper.current.reach += 8
+    } else if (activeMomentType === 'header') {
+      // Aerial moments need the ball live from the off so it actually drops through the
+      // heading zone (and is visible). handleInput already exempts headers from the
+      // "already active" guard, so the player heads it on the way down.
+      ball.current.active = true
+    }
+
+    // Place the player avatar with the ball so they are never drawn in front of their
+    // own ball. Aerial headers keep the player grounded looking up; corners and free
+    // kicks are taken from off-frame, so no avatar is drawn for those.
+    if (activeMomentType === 'corner' || activeMomentType === 'freekick') {
+      avatarPos.current = { x: 200, y: 320, show: false }
+    } else if (activeMomentType === 'header') {
+      avatarPos.current = { x: 200, y: 320, show: true }
+    } else {
+      avatarPos.current = {
+        x: Math.max(40, Math.min(360, ball.current.x)),
+        y: Math.max(70, Math.min(378, ball.current.y + 26)),
+        show: true,
+      }
     }
   }, [activeScenario, activeMomentType, clearMomentTimeouts, keeperProfile, opponent.difficulty, playerStats.touch, playerStats.pace, playerStats.engine])
 
@@ -810,8 +843,12 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
       b.y += b.vy * ts
       b.z += b.vz * ts
 
+      // An aerial ball that has not yet been headed glides down at a steady pace so the
+      // player has a fair window to time the header. Full gravity would drop it through
+      // the heading zone in a fraction of a second. Once struck, normal gravity resumes.
+      const headerGlide = activeMomentType === 'header' && !b.struck
       if (b.z > 0) {
-        b.vz -= 0.5 * ts
+        if (!headerGlide) b.vz -= 0.5 * ts
       } else {
         b.z = 0
         b.vz *= bounceCoeff
@@ -1027,7 +1064,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
     const b = ball.current
     const k = keeper.current
 
-    c.setTransform(dprRef.current, 0, 0, dprRef.current, 0, 0)
+    c.setTransform(worldScaleRef.current, 0, 0, worldScaleRef.current, 0, 0)
     updateSimulation()
     const shake = reducedMotion ? 0 : screenShakeRef.current
     if (shake > 0) c.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake)
@@ -1080,8 +1117,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
     fieldNPCs.current.forEach((n: any) => {
       c.beginPath(); c.ellipse(n.x, n.y + 10, 13, 5, 0, 0, Math.PI * 2); c.fill()
     })
-    if (!['corner', 'freekick'].includes(activeMomentType)) {
-      c.beginPath(); c.ellipse(200, 330, 14, 5, 0, 0, Math.PI * 2); c.fill()
+    if (avatarPos.current.show) {
+      c.beginPath(); c.ellipse(avatarPos.current.x, avatarPos.current.y + 10, 14, 5, 0, 0, Math.PI * 2); c.fill()
     }
 
     if (ballTrail.current.length > 1) {
@@ -1194,8 +1231,8 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
     c.beginPath(); c.arc(k.x - gloveSpread, k.y - 5, 4, 0, Math.PI * 2); c.fill()
     c.beginPath(); c.arc(k.x + gloveSpread, k.y - 5, 4, 0, Math.PI * 2); c.fill()
 
-    if (!['corner', 'freekick'].includes(activeMomentType)) {
-      drawHumanoid(c, 200, 320, { bodyColor: '#F59E0B', headColor: '#FBBF24', size: 1.2 })
+    if (avatarPos.current.show) {
+      drawHumanoid(c, avatarPos.current.x, avatarPos.current.y, { bodyColor: '#F59E0B', headColor: '#FBBF24', size: 1.2 })
     }
 
     if (activeMomentType === 'header' && b.active) {
@@ -1370,7 +1407,7 @@ export function ArenaScreen({ store, fixture, activeCards, onCompleteMatch, onTu
 
   const getCanvasPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: (clientX - rect.left) * (400 / rect.width), y: (clientY - rect.top) * (400 / rect.height) }
+    return { x: (clientX - rect.left) * (WORLD_SIZE / rect.width), y: (clientY - rect.top) * (WORLD_SIZE / rect.height) }
   }
 
   const beginDrag = (clientX: number, clientY: number) => {
